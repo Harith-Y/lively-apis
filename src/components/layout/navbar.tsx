@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { Bot, Menu, X, Zap, User as UserIcon } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 
@@ -109,6 +110,7 @@ export function Navbar() {
 
           {/* Desktop Auth/Profile */}
           <div className="hidden md:flex items-center space-x-4">
+            <ThemeToggle />
             {user ? (
               <div className="relative" ref={profileRef}>
                 <Button variant="ghost" className="flex items-center space-x-2" onClick={() => setProfileMenuOpen((v) => !v)}>
@@ -177,6 +179,9 @@ export function Navbar() {
                   </Link>
                 ))}
                 <div className="flex flex-col space-y-2 pt-4 border-t border-gray-200">
+                  <div className="px-4 py-2">
+                    <ThemeToggle variant="dropdown" showLabel />
+                  </div>
                   {user ? (
                     <>
                       <Link href="/dashboard" className="block px-4 py-2 text-gray-700 hover:bg-gray-100">Dashboard</Link>

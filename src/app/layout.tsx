@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
+import { initializeThemeScript } from "@/lib/theme";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,6 +20,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: initializeThemeScript(),
+          }}
+        />
+      </head>
       <body className={inter.className} suppressHydrationWarning={true}>
         <div className="min-h-screen flex flex-col">
           <Navbar />
