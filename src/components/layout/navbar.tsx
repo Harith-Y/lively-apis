@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Bot, Menu, X, Zap, User as UserIcon } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
-import Cookies from 'js-cookie'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard' },
@@ -37,15 +36,18 @@ export function Navbar() {
     // Fetch user info from backend (e.g., /auth/me)
     const fetchUser = async () => {
       try {
-        const res = await fetch(`${BACKEND_URL}/auth/me`, { credentials: 'include' })
+        const token = localStorage.getItem('sb-access-token');
+        const res = await fetch(`${BACKEND_URL}/auth/me`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
         if (res.ok) {
-          const data = await res.json()
-          setUser(data.user)
+          const data = await res.json();
+          setUser(data.user);
         } else {
-          setUser(null)
+          setUser(null);
         }
       } catch {
-        setUser(null)
+        setUser(null);
       }
     }
     fetchUser()
@@ -68,12 +70,12 @@ export function Navbar() {
   }, [profileMenuOpen])
 
   const handleSignOut = async () => {
-    await fetch(`${BACKEND_URL}/auth/signout`, { method: 'POST', credentials: 'include' })
-    Cookies.remove('sb-access-token', { path: '/' })
-    window.dispatchEvent(new Event('auth-changed'))
-    setUser(null)
-    setProfileMenuOpen(false)
-    setMobileMenuOpen(false)
+    await fetch(`${BACKEND_URL}/auth/signout`, { method: 'POST' })
+    localStorage.removeItem('sb-access-token');
+    window.dispatchEvent(new Event('auth-changed'));
+    setUser(null);
+    setProfileMenuOpen(false);
+    setMobileMenuOpen(false);
   }
 
   return (

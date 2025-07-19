@@ -1,9 +1,10 @@
-"use client"
-import { useState } from 'react'
+'use client'
+import { useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
+
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [success, setSuccess] = useState(false)
@@ -29,8 +30,14 @@ export default function ResetPasswordPage() {
       body: JSON.stringify({ token, password })
     })
     const data = await res.json()
-    if (res.ok) setSuccess(true)
-    else setError(data.error || 'Failed to reset password')
+    if (res.ok) {
+      // If backend returns a new access token, store it in localStorage
+      if (data.session && data.session.access_token) {
+        localStorage.setItem('sb-access-token', data.session.access_token);
+        window.dispatchEvent(new Event('auth-changed'));
+      }
+      setSuccess(true);
+    } else setError(data.error || 'Failed to reset password')
   }
 
   return (
@@ -67,4 +74,18 @@ export default function ResetPasswordPage() {
       </div>
     </div>
   )
-} 
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 p-4">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
+          <div className="text-center">Loading...</div>
+        </div>
+      </div>
+    }>
+      <ResetPasswordForm />
+    </Suspense>
+  )
+}

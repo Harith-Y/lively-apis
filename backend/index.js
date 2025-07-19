@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
-const cookieParser = require('cookie-parser');
 require('dotenv').config({ path: require('path').resolve(__dirname, '.env') });
 
 const app = express();
@@ -13,11 +12,18 @@ const allowedOrigins = [
 ].filter(Boolean);
 
 app.use(cors({
-  origin: allowedOrigins,
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      return callback(null, true);
+    } else {
+      return callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 app.use(express.json());
-app.use(cookieParser());
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -50,13 +56,7 @@ app.post('/auth/signup', async (req, res) => {
   if (error) {
     return res.status(400).json({ error: error.message });
   }
-  // Set cookie for cross-site if in production
-  if (data.session && data.session.access_token) {
-    const cookieOptions = process.env.NODE_ENV === 'production'
-      ? { path: '/', sameSite: 'none', secure: true }
-      : { path: '/' };
-    res.cookie('sb-access-token', data.session.access_token, cookieOptions);
-  }
+  // No cookie logic; return token in response only
   res.status(200).json({ user: data.user, session: data.session });
 });
 
@@ -70,11 +70,7 @@ app.post('/auth/signin', async (req, res) => {
   if (error) {
     return res.status(401).json({ error: error.message });
   }
-  // Set cookie for cross-site if in production
-  const cookieOptions = process.env.NODE_ENV === 'production'
-    ? { path: '/', sameSite: 'none', secure: true }
-    : { path: '/' };
-  res.cookie('sb-access-token', data.session.access_token, cookieOptions);
+  // No cookie logic; return token in response only
   res.status(200).json({ user: data.user, session: data.session });
 });
 
@@ -103,7 +99,8 @@ app.post('/auth/reset-password', async (req, res) => {
   if (error) {
     return res.status(400).json({ error: error.message });
   }
-  res.json({ success: true });
+  // If a new session/access_token is returned, include it in the response
+  res.json({ success: true, session: data.session });
 });
 
 // Playground agent response endpoint
@@ -148,7 +145,7 @@ app.get('/auth/me', async (req, res) => {
 });
 
 app.post('/auth/signout', (req, res) => {
-  res.clearCookie('sb-access-token', { path: '/' });
+  // No cookie logic; just respond
   res.json({ success: true });
 });
 
