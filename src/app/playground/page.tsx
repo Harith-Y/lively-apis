@@ -6,10 +6,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
-import { APIAnalyzer, ParsedAPI } from '@/lib/api-analyzer'
+import { APIAnalyzer } from '@/lib/api-analyzer'
 import { AgentPlanner, AgentPlan } from '@/lib/agent-planner'
-import { AIIntegration, AgentExecution } from '@/lib/ai-integration'
-import { demoAgents, DemoAgent } from '@/lib/demo-data'
+import { AIIntegration } from '@/lib/ai-integration'
+import { demoAgents } from '@/lib/demo-data'
 
 import { 
   Bot, 
@@ -30,17 +30,8 @@ interface Message {
   timestamp: Date
 }
 
-
-
 interface APIResponse {
   agentResponse: string
-}
-
-interface Agent {
-  id: string
-  name: string
-  status: string
-  description: string
 }
 
 interface ApiCredentials {
@@ -134,7 +125,7 @@ export default function PlaygroundPage() {
         const agentResponse: Message = {
           id: (Date.now() + 1).toString(),
           type: 'agent',
-          content: getAgentResponse(inputMessage),
+          content: getDemoResponse(inputMessage),
           timestamp: new Date()
         }
         setMessages(prev => [...prev, agentResponse])

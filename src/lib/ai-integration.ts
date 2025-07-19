@@ -53,7 +53,6 @@ export class AIIntegration {
     }
 
     try {
-      // Call AI model with system prompt and function definitions
       const aiResponse = await this.callAI(
         plan.systemPrompt,
         userMessage,
@@ -62,7 +61,6 @@ export class AIIntegration {
 
       execution.agentResponse = aiResponse.content
 
-      // Execute any function calls
       if (aiResponse.functionCalls) {
         for (const functionCall of aiResponse.functionCalls) {
           const result = await this.executeFunctionCall(
@@ -73,7 +71,6 @@ export class AIIntegration {
           execution.functionCalls.push(result)
         }
 
-        // If there were function calls, get a follow-up response
         if (execution.functionCalls.length > 0) {
           const followUpResponse = await this.getFollowUpResponse(
             plan.systemPrompt,
@@ -155,8 +152,6 @@ export class AIIntegration {
     _userMessage: string,
     _functions: FunctionCall[]
   ): Promise<AIResponse> {
-    // Claude implementation would go here
-    // For now, return a mock response
     return {
       content: "I'm a Claude-powered agent ready to help with your API operations. However, Claude integration is not fully implemented in this demo."
     }
@@ -168,16 +163,13 @@ export class AIIntegration {
     credentials: Record<string, string>
   ): Promise<FunctionCall> {
     try {
-      // Find the corresponding endpoint
       const endpoint = this.findEndpointForFunction(functionCall.name, api)
       if (!endpoint) {
         throw new Error(`Unknown function: ${functionCall.name}`)
       }
 
-      // Build the API request
       const apiRequest = this.buildAPIRequest(endpoint, functionCall.parameters, api, credentials)
       
-      // Execute the API call
       const response = await fetch(apiRequest.url, apiRequest.options)
       
       if (!response.ok) {
@@ -222,7 +214,6 @@ export class AIIntegration {
       'Content-Type': 'application/json'
     }
 
-    // Add authentication
     if (api.authentication.type === 'bearer') {
       headers['Authorization'] = `Bearer ${credentials.apiKey || credentials.token}`
     } else if (api.authentication.type === 'apiKey') {
@@ -231,7 +222,6 @@ export class AIIntegration {
       }
     }
 
-    // Handle path parameters
     endpoint.parameters
       .filter(p => p.location === 'path')
       .forEach(param => {
@@ -240,7 +230,6 @@ export class AIIntegration {
         }
       })
 
-    // Handle query parameters
     const queryParams = new URLSearchParams()
     endpoint.parameters
       .filter(p => p.location === 'query')
@@ -254,7 +243,6 @@ export class AIIntegration {
       url += '?' + queryParams.toString()
     }
 
-    // Handle body parameters
     let body: string | undefined
     const bodyParams = endpoint.parameters.filter(p => p.location === 'body')
     if (bodyParams.length > 0 && endpoint.method !== 'GET') {
@@ -295,9 +283,7 @@ export class AIIntegration {
     return `I apologize, but I encountered an error while processing your request: ${error}. Please try again or rephrase your question.`
   }
 
-  // Test function for development
   async testAgent(plan: AgentPlan, testMessage: string): Promise<{ agentResponse: string }> {
-    // Return a mock execution for testing
     return { agentResponse: `This is a test response to: "${testMessage}". In a real implementation, I would process this using the configured AI model and execute any necessary API calls.` }
   }
 }

@@ -5,16 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
-  Bot, 
   ShoppingCart, 
   CreditCard, 
   MessageSquare, 
   Play, 
   Copy,
-  Star,
   Users,
   TrendingUp,
-  Clock,
   CheckCircle,
   ArrowRight
 } from 'lucide-react'
@@ -33,7 +30,7 @@ export default function TemplatesPage() {
       case 'communication':
         return MessageSquare
       default:
-        return Bot
+        return null
     }
   }
 
@@ -81,7 +78,7 @@ export default function TemplatesPage() {
                 <CardHeader>
                   <div className="flex items-center justify-between mb-4">
                     <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
-                      <Icon className="w-6 h-6 text-white" />
+                      {Icon && <Icon className="w-6 h-6 text-white" />}
                     </div>
                     <Badge className={getColor(agent.category)}>
                       {agent.api}
@@ -89,7 +86,7 @@ export default function TemplatesPage() {
                   </div>
                   <CardTitle className="text-xl">{agent.name}</CardTitle>
                   <CardDescription className="text-gray-600">
-                    {agent.description}
+                    {agent.description.replace(/"/g, '')}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -155,7 +152,6 @@ export default function TemplatesPage() {
           <Card className="mb-8">
             <CardHeader>
               <CardTitle className="flex items-center">
-                <Bot className="w-5 h-5 mr-2" />
                 Template Details: {demoAgents.find(a => a.id === selectedTemplate)?.name}
               </CardTitle>
               <CardDescription>
@@ -188,7 +184,7 @@ export default function TemplatesPage() {
                           <div key={index} className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                             <div className="flex items-start">
                               <Users className="w-4 h-4 text-blue-600 mr-2 mt-0.5" />
-                              <span className="text-blue-800 text-sm">"{query}"</span>
+                              <span className="text-blue-800 text-sm">{query}</span>
                             </div>
                           </div>
                         ))}

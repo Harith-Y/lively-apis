@@ -1,8 +1,13 @@
 import * as React from "react"
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar, PieChart, Pie, Cell } from 'recharts'
 
+interface ChartData extends Record<string, string | number> {
+  name: string
+  value: number
+}
+
 interface ChartProps {
-  data: any[]
+  data: ChartData[]
   type: 'line' | 'bar' | 'pie'
   dataKey?: string
   xAxisKey?: string
@@ -54,7 +59,7 @@ export function Chart({ data, type, dataKey = 'value', xAxisKey = 'name', color 
           </PieChart>
         )
       default:
-        return null
+        return <></>
     }
   }
 
