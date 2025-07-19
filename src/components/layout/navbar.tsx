@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Bot, Menu, X, Zap, User as UserIcon } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
-import { supabase } from '@/lib/supabase'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard' },
@@ -17,6 +16,8 @@ const navigation = [
   { name: 'Deploy', href: '/deploy' },
 ]
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
+
 export function Navbar() {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -25,17 +26,22 @@ export function Navbar() {
   const profileRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data } = await supabase.auth.getUser()
-      setUser(data?.user || null)
+    // Fetch user info from backend (e.g., /auth/me)
+    const fetchUser = async () => {
+      try {
+        const res = await fetch(`${BACKEND_URL}/auth/me`, { credentials: 'include' })
+        if (res.ok) {
+          const data = await res.json()
+          setUser(data.user)
+        } else {
+          setUser(null)
+        }
+      } catch {
+        setUser(null)
+      }
     }
-    getUser()
-    const { data: listener } = supabase.auth.onAuthStateChange(() => {
-      getUser()
-    })
-    return () => {
-      listener?.subscription.unsubscribe()
-    }
+    fetchUser()
+    // Optionally, poll or use websockets for auth state changes
   }, [])
 
   // Click outside to close profile dropdown (desktop)
@@ -49,6 +55,13 @@ export function Navbar() {
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [profileMenuOpen])
+
+  const handleSignOut = async () => {
+    await fetch(`${BACKEND_URL}/auth/signout`, { method: 'POST', credentials: 'include' })
+    setUser(null)
+    setProfileMenuOpen(false)
+    setMobileMenuOpen(false)
+  }
 
   return (
     <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
@@ -92,7 +105,7 @@ export function Navbar() {
                     <Link href="/dashboard" className="block px-4 py-2 text-gray-700 hover:bg-gray-100">Dashboard</Link>
                     <button
                       className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
-                      onClick={async () => { await supabase.auth.signOut(); setUser(null); setProfileMenuOpen(false); }}
+                      onClick={handleSignOut}
                     >Sign Out</button>
                   </div>
                 )}
@@ -154,7 +167,7 @@ export function Navbar() {
                       <Link href="/dashboard" className="block px-4 py-2 text-gray-700 hover:bg-gray-100">Dashboard</Link>
                       <button
                         className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
-                        onClick={async () => { await supabase.auth.signOut(); setUser(null); setMobileMenuOpen(false); }}
+                        onClick={handleSignOut}
                       >Sign Out</button>
                     </>
                   ) : (

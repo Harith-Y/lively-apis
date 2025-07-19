@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { supabase } from '@/lib/supabase'
 
 export default function ContactPage() {
   const [form, setForm] = useState({ name: '', email: '', message: '' })
@@ -19,15 +18,22 @@ export default function ContactPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    const { error } = await supabase.from('feedback').insert([
-      { name: form.name, email: form.email, message: form.message }
-    ])
-    setLoading(false)
-    if (error) {
+    try {
+      const res = await fetch('http://localhost:4000/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form)
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error || 'Failed to send feedback. Please try again.')
+      } else {
+        setSubmitted(true)
+      }
+    } catch (err) {
       setError('Failed to send feedback. Please try again.')
-    } else {
-      setSubmitted(true)
     }
+    setLoading(false)
   }
 
   return (
