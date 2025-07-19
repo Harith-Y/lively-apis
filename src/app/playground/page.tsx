@@ -297,6 +297,7 @@ export default function PlaygroundPage() {
               <div className="border-t p-4">
                 <div className="flex space-x-2">
                   <Input
+                    autoComplete="off"
                     placeholder="Type your message..."
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
