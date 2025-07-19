@@ -1,6 +1,6 @@
 import { APIAnalyzer } from '../../lib/api-analyzer';
 import { AgentPlanner } from '../../lib/agent-planner';
-import { AIIntegration, executeAgentFunctionCalls, FunctionCall } from '../../lib/ai-integration';
+import { executeAgentFunctionCalls, FunctionCall } from '../../lib/ai-integration';
 
 async function testDynamicAgent() {
   // 1. Analyze the Shopify API (using the built-in analyzer)
@@ -9,7 +9,7 @@ async function testDynamicAgent() {
 
   // 2. Generate an agent plan for the multi-step workflow
   const planner = new AgentPlanner(parsedAPI);
-  const plan = await planner.planAgent('Send the lowest stock items from Shopify to my mail');
+  // Remove unused variable 'plan' at line 12
 
   // 3. Simulate what an LLM would return (function calls)
   // In a real system, you'd get this from OpenAI function-calling or similar
