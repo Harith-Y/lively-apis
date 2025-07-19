@@ -14,7 +14,8 @@ import {
   TrendingUp,
   CheckCircle,
   ArrowRight,
-  X
+  X,
+  Sparkles
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -53,8 +54,10 @@ export default function TemplatesPage() {
         return CreditCard
       case 'communication':
         return MessageSquare
+      case 'analytics':
+        return TrendingUp
       default:
-        return null
+        return Sparkles // Default icon
     }
   }
 
@@ -66,6 +69,8 @@ export default function TemplatesPage() {
         return 'bg-blue-100 text-blue-800 border-blue-200'
       case 'communication':
         return 'bg-purple-100 text-purple-800 border-purple-200'
+      case 'analytics':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200'
     }
@@ -104,9 +109,7 @@ export default function TemplatesPage() {
                     <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
                       {Icon && <Icon className="w-6 h-6 text-white" />}
                     </div>
-                    <Badge className={getColor(template.category || '')}>
-                      {template.api_source || 'API'}
-                    </Badge>
+                    {/* Removed API source/URL badge */}
                   </div>
                   <CardTitle className="text-xl">{template.name}</CardTitle>
                   <CardDescription className="text-gray-600">
