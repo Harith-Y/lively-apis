@@ -15,10 +15,9 @@ Transform any API into conversational AI agents with our revolutionary no-code p
 
 - **Frontend**: Next.js 14 with TypeScript
 - **Backend**: Node.js with Express
-- **Database**: Supabase (real-time capabilities)
-- **Authentication**: NextAuth.js
+- **Database and Authentication**: Supabase (real-time capabilities)
 - **UI**: Tailwind CSS + shadcn/ui components
-- **AI**: OpenAI GPT-4 / Anthropic Claude
+- **AI**: Meta LLama-4
 - **Deployment**: Vercel
 
 ## 🏗 Project Structure

@@ -6,10 +6,28 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Bot, Mail, Lock, ArrowRight } from 'lucide-react'
 import { useState } from 'react'
+import { supabase } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
 
 export default function SignInPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const router = useRouter()
+
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    setLoading(false)
+    if (error) {
+      setError(error.message)
+    } else {
+      router.push('/dashboard')
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4">
@@ -32,7 +50,7 @@ export default function SignInPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <form className="space-y-4">
+            <form className="space-y-4" onSubmit={handleSignIn}>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Email address
@@ -82,10 +100,11 @@ export default function SignInPage() {
                 </Link>
               </div>
 
-              <Button className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
-                Sign in
+              <Button className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700" type="submit" disabled={loading}>
+                {loading ? 'Signing in...' : 'Sign in'}
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
+              {error && <div className="text-red-600 text-sm mt-2">{error}</div>}
             </form>
 
             <div className="relative">
