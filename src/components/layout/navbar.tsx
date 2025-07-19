@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Bot, Menu, X, Zap, User as UserIcon } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
+import Cookies from 'js-cookie'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard' },
@@ -61,6 +62,8 @@ export function Navbar() {
 
   const handleSignOut = async () => {
     await fetch(`${BACKEND_URL}/auth/signout`, { method: 'POST', credentials: 'include' })
+    Cookies.remove('sb-access-token', { path: '/' })
+    window.dispatchEvent(new Event('auth-changed'))
     setUser(null)
     setProfileMenuOpen(false)
     setMobileMenuOpen(false)

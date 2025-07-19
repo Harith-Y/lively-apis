@@ -85,25 +85,31 @@ app.post('/playground/agent-response', async (req, res) => {
 // /auth/me endpoint for frontend auth state check
 app.get('/auth/me', async (req, res) => {
   try {
-    // Try to get token from Authorization header (Bearer) or cookie
     let token = null;
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
       token = req.headers.authorization.replace('Bearer ', '');
     } else if (req.cookies && req.cookies['sb-access-token']) {
       token = req.cookies['sb-access-token'];
     }
+    console.log('Token received in /auth/me:', token);
     if (!token) {
       return res.json({ user: null });
     }
-    // Use Supabase to get user from JWT
     const { data, error } = await supabase.auth.getUser(token);
+    console.log('Supabase user:', data, 'Error:', error);
     if (error || !data || !data.user) {
       return res.json({ user: null });
     }
     return res.json({ user: data.user });
   } catch (err) {
+    console.error('Error in /auth/me:', err);
     return res.json({ user: null });
   }
+});
+
+app.post('/auth/signout', (req, res) => {
+  res.clearCookie('sb-access-token', { path: '/' });
+  res.json({ success: true });
 });
 
 const PORT = process.env.PORT || 4000;
