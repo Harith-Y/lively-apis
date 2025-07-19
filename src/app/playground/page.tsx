@@ -60,6 +60,7 @@ export default function PlaygroundPage() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [temperature, setTemperature] = useState(0.7)
   const [maxTokens, setMaxTokens] = useState(1000)
+  const [provider, setProvider] = useState<'openai' | 'claude' | 'openrouter'>('openrouter')
 
   // When agent changes, load or initialize chat for that agent
   useEffect(() => {
@@ -149,7 +150,9 @@ export default function PlaygroundPage() {
             agentPlan,
             message: inputMessage,
             temperature,
-            maxTokens
+            maxTokens,
+            provider,
+            apiKey: apiCredentials.apiKey || undefined
           })
         })
         const data = await res.json()
@@ -219,7 +222,17 @@ export default function PlaygroundPage() {
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Testing Playground</h1>
             <p className="text-gray-600">Test and refine your AI agents in real-time</p>
           </div>
-          <div className="flex space-x-3">
+          <div className="flex space-x-3 items-center w-full sm:w-auto mt-4 sm:mt-0">
+            <select
+              className="border border-gray-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              value={provider}
+              onChange={e => setProvider(e.target.value as 'openai' | 'claude' | 'openrouter')}
+              style={{ minWidth: 120 }}
+            >
+              <option value="openai">OpenAI</option>
+              <option value="claude">Claude</option>
+              <option value="openrouter">OpenRouter</option>
+            </select>
             <Button variant="outline" onClick={resetConversation}>
               <RotateCcw className="w-4 h-4 mr-2" />
               Reset
