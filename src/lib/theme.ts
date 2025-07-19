@@ -22,18 +22,12 @@ export class ThemeManager {
 
   private initializeTheme(): void {
     if (typeof window === 'undefined') return;
-    // Get saved preference or default to system
-    const savedTheme = localStorage.getItem('theme') as Theme;
-    this.currentTheme = savedTheme || 'system';
-    // Apply the theme immediately
+    // Read from cookie first, fallback to localStorage, then default
+    const cookieMatch = document.cookie.match(/(?:^|; )theme=([^;]*)/);
+    const savedTheme = cookieMatch ? (decodeURIComponent(cookieMatch[1]) as Theme) : null;
+    this.currentTheme = savedTheme || (localStorage.getItem('theme') as Theme) || 'light';
     this.applyTheme(this.currentTheme);
-    // Listen for system theme changes
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    mediaQuery.addEventListener('change', () => {
-      if (this.currentTheme === 'system') {
-        this.applyTheme('system');
-      }
-    });
+    // Listen for system theme changes (optional, can be removed if not using system theme)
   }
 
   private applyTheme(theme: Theme): void {
