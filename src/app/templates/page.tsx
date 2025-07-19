@@ -20,10 +20,20 @@ import Link from 'next/link'
 
 const BACKEND_API_URL = process.env.NEXT_PUBLIC_BACKEND_URL + '/templates'
 
+interface Template {
+  id: string;
+  name: string;
+  description: string;
+  api_source: string;
+  capabilities: string[];
+  sample_queries: string[];
+  category?: string;
+}
+
 export default function TemplatesPage() {
-  const [templates, setTemplates] = useState<any[]>([])
+  const [templates, setTemplates] = useState<Template[]>([])
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
-  const [usedTemplate, setUsedTemplate] = useState<any | null>(null)
+  const [usedTemplate, setUsedTemplate] = useState<Template | null>(null)
 
   useEffect(() => {
     async function fetchTemplates() {
@@ -107,7 +117,7 @@ export default function TemplatesPage() {
                   <div className="mb-6">
                     <h4 className="font-medium text-gray-900 mb-2">Key Capabilities</h4>
                     <div className="space-y-1">
-                      {template.capabilities?.slice(0, 3).map((capability: string, index: number) => (
+                      {template.capabilities?.slice(0, 3).map((capability, index) => (
                         <div key={index} className="flex items-center text-sm text-gray-600">
                           <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
                           {capability}
