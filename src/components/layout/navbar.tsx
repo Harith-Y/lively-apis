@@ -22,9 +22,16 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:400
 export function Navbar() {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [user, setUser] = useState<any>(null)
+  interface NavbarUser {
+    id: string;
+    email: string;
+    user_metadata?: Record<string, unknown>;
+    app_metadata?: Record<string, unknown>;
+    [key: string]: unknown;
+  }
+  const [user, setUser] = useState<NavbarUser | null>(null)
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
-  const profileRef = useRef<HTMLDivElement>(null)
+  const profileRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     // Fetch user info from backend (e.g., /auth/me)

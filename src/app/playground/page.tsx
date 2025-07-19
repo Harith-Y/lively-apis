@@ -12,7 +12,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 import { APIAnalyzer } from '@/lib/api-analyzer'
 import { AgentPlanner, AgentPlan } from '@/lib/agent-planner'
-import { AIIntegration } from '@/lib/ai-integration'
 
 import { 
   Bot, 
@@ -31,10 +30,6 @@ interface Message {
   type: 'user' | 'agent'
   content: string
   timestamp: Date
-}
-
-interface APIResponse {
-  agentResponse: string
 }
 
 interface ApiCredentials {
@@ -59,7 +54,6 @@ export default function PlaygroundPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [agentPlan, setAgentPlan] = useState<AgentPlan | null>(null)
   const [apiCredentials, setApiCredentials] = useState<ApiCredentials>({ apiKey: '' })
-  const aiIntegration = new AIIntegration()
 
   // When agent changes, load or initialize chat for that agent
   useEffect(() => {
@@ -87,7 +81,7 @@ export default function PlaygroundPage() {
     } else {
       setMessages(chats[selectedAgent])
     }
-  }, [selectedAgent])
+  }, [selectedAgent, chats])
 
   // When messages change, update chat history for the current agent
   useEffect(() => {

@@ -51,7 +51,7 @@ export default function SignUpPage() {
         }
         router.push('/dashboard')
       }
-    } catch (err) {
+    } catch {
       setError('Sign up failed')
       setLoading(false)
     }

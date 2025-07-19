@@ -203,10 +203,12 @@ export class AIIntegration {
   }
 
   private async callClaude(
-    _systemPrompt: string,
-    _userMessage: string,
-    _functions: FunctionCall[]
+    systemPrompt: string,
+    userMessage: string,
+    functions: FunctionCall[]
   ): Promise<AIResponse> {
+    // Claude implementation would go here
+    // For now, return a mock response
     return {
       content: "I'm a Claude-powered agent ready to help with your API operations. However, Claude integration is not fully implemented in this demo."
     }

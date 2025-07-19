@@ -40,7 +40,7 @@ export default function SignInPage() {
         }
         router.push('/dashboard')
       }
-    } catch (err) {
+    } catch {
       setError('Sign in failed')
       setLoading(false)
     }

@@ -31,7 +31,7 @@ export default function ContactPage() {
       } else {
         setSubmitted(true)
       }
-    } catch (err) {
+    } catch {
       setError('Failed to send feedback. Please try again.')
     }
     setLoading(false)
@@ -43,7 +43,7 @@ export default function ContactPage() {
         <h1 className="text-3xl font-bold mb-4 text-purple-700">Contact Us</h1>
         <p className="text-gray-700 mb-6">Have questions or feedback? Fill out the form below and our team will get back to you soon.</p>
         {submitted ? (
-          <div className="text-green-600 font-semibold">Thank you for reaching out! We'll be in touch soon.</div>
+          <div className="text-green-600 font-semibold">Thank you for reaching out! We&apos;ll be in touch soon.</div>
         ) : (
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
