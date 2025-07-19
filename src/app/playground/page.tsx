@@ -305,6 +305,7 @@ export default function PlaygroundPage() {
               <div className="border-t p-4">
                 <div className="flex space-x-2">
                   <Input
+                    name="playground-message"
                     autoComplete="off"
                     placeholder="Type your message..."
                     value={inputMessage}
@@ -379,6 +380,8 @@ export default function PlaygroundPage() {
                       API Key
                     </label>
                     <Input
+                      name="api-key"
+                      autoComplete="new-password"
                       type="password"
                       placeholder="Enter API key for testing"
                       value={apiCredentials.apiKey}
