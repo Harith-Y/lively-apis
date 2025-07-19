@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Bot, Mail, Lock, User, ArrowRight, CheckCircle } from 'lucide-react'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Cookies from 'js-cookie'
 
 export default function SignUpPage() {
   const [formData, setFormData] = useState({
@@ -43,7 +44,11 @@ export default function SignUpPage() {
       if (!res.ok) {
         setError(data.error || 'Sign up failed')
       } else {
-        // Optionally store a token or set a cookie here
+        // Store access token as cookie for session
+        if (data.session && data.session.access_token) {
+          Cookies.set('sb-access-token', data.session.access_token, { path: '/', sameSite: 'lax' })
+          window.dispatchEvent(new Event('auth-changed'))
+        }
         router.push('/dashboard')
       }
     } catch (err) {

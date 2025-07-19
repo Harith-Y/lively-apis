@@ -41,7 +41,10 @@ export function Navbar() {
       }
     }
     fetchUser()
-    // Optionally, poll or use websockets for auth state changes
+    // Listen for custom auth-changed event
+    const handleAuthChanged = () => fetchUser()
+    window.addEventListener('auth-changed', handleAuthChanged)
+    return () => window.removeEventListener('auth-changed', handleAuthChanged)
   }, [])
 
   // Click outside to close profile dropdown (desktop)

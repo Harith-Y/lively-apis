@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
+const cookieParser = require('cookie-parser');
 require('dotenv').config({ path: require('path').resolve(__dirname, '.env') });
 
 const app = express();
@@ -16,6 +17,7 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
+app.use(cookieParser());
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -78,6 +80,30 @@ app.post('/playground/agent-response', async (req, res) => {
 
   // Mock response for demonstration
   return res.json({ agentResponse: `This is a mock AI response to: "${message}" for agent ${agentId}.` });
+});
+
+// /auth/me endpoint for frontend auth state check
+app.get('/auth/me', async (req, res) => {
+  try {
+    // Try to get token from Authorization header (Bearer) or cookie
+    let token = null;
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      token = req.headers.authorization.replace('Bearer ', '');
+    } else if (req.cookies && req.cookies['sb-access-token']) {
+      token = req.cookies['sb-access-token'];
+    }
+    if (!token) {
+      return res.json({ user: null });
+    }
+    // Use Supabase to get user from JWT
+    const { data, error } = await supabase.auth.getUser(token);
+    if (error || !data || !data.user) {
+      return res.json({ user: null });
+    }
+    return res.json({ user: data.user });
+  } catch (err) {
+    return res.json({ user: null });
+  }
 });
 
 const PORT = process.env.PORT || 4000;
