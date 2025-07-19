@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
-import { initializeThemeScript } from "@/lib/theme-initializer";
+import { cookies } from 'next/headers';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -16,20 +16,17 @@ export const metadata: Metadata = {
 // NOTE: Hydration warning for <html> is expected due to SSR and client theme switching.
 // See: https://github.com/vercel/next.js/discussions/35773
 // The page is hidden until the theme is set, so users never see a mismatch.
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // Read the theme from the cookie (default to 'light')
+  const cookieStore = await cookies();
+  const theme = cookieStore.get('theme')?.value || 'light';
   return (
-    <html lang="en" data-scroll-behavior="smooth">
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: initializeThemeScript(),
-          }}
-        />
-      </head>
+    <html lang="en" className={theme} data-scroll-behavior="smooth">
+      <head />
       <body className={inter.className} suppressHydrationWarning={true}>
         <div className="min-h-screen flex flex-col">
           <Navbar />

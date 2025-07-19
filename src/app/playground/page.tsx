@@ -81,7 +81,7 @@ export default function PlaygroundPage() {
     } else {
       setMessages(chats[selectedAgent])
     }
-  }, [selectedAgent])
+  }, [selectedAgent, chats])
 
   // When messages change, update chat history for the current agent
   useEffect(() => {

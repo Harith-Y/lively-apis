@@ -63,12 +63,11 @@ export class ThemeManager {
   setTheme(theme: Theme): void {
     this.currentTheme = theme;
     if (typeof window !== 'undefined') {
-      if (theme === 'dark') {
-        localStorage.setItem('theme', 'dark');
-      } else {
-        localStorage.removeItem('theme');
-      }
+      // Set the theme cookie for SSR
+      document.cookie = `theme=${theme}; path=/; max-age=31536000`;
       this.applyTheme(theme);
+      // Reload the page to ensure SSR picks up the new theme
+      window.location.reload();
     }
   }
 

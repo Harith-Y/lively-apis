@@ -31,57 +31,57 @@ export function ThemeDemo() {
           Test the dark mode toggle and see how it affects the interface
         </CardDescription>
       </CardHeader>
-      {/* Theme Status */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-          <div className="text-sm text-gray-600 dark:text-gray-400">Current Theme</div>
-          <div className="font-semibold text-lg capitalize flex items-center justify-center space-x-2">
-            {theme === 'system' && <Monitor className="w-4 h-4" />}
-            {theme === 'light' && <Sun className="w-4 h-4" />}
-            {theme === 'dark' && <Moon className="w-4 h-4" />}
-            <span>{theme}</span>
+      <CardContent>
+        {/* Theme Status */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <div className="text-sm text-gray-600 dark:text-gray-400">Current Theme</div>
+            <div className="font-semibold text-lg capitalize flex items-center justify-center space-x-2">
+              {theme === 'system' && <Monitor className="w-4 h-4" />}
+              {theme === 'light' && <Sun className="w-4 h-4" />}
+              {theme === 'dark' && <Moon className="w-4 h-4" />}
+              <span>{theme}</span>
+            </div>
+          </div>
+          <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <div className="text-sm text-gray-600 dark:text-gray-400">Effective Theme</div>
+            <div className="font-semibold text-lg capitalize flex items-center justify-center space-x-2">
+              {effectiveTheme === 'light' && <Sun className="w-4 h-4" />}
+              {effectiveTheme === 'dark' && <Moon className="w-4 h-4" />}
+              <span>{effectiveTheme}</span>
+            </div>
+          </div>
+          <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <div className="text-sm text-gray-600 dark:text-gray-400">System Preference</div>
+            <div className="font-semibold text-lg capitalize">
+              {systemPref}
+            </div>
           </div>
         </div>
-        <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-          <div className="text-sm text-gray-600 dark:text-gray-400">Effective Theme</div>
-          <div className="font-semibold text-lg capitalize flex items-center justify-center space-x-2">
-            {effectiveTheme === 'light' && <Sun className="w-4 h-4" />}
-            {effectiveTheme === 'dark' && <Moon className="w-4 h-4" />}
-            <span>{effectiveTheme}</span>
+        {/* Toggle Variants */}
+        <h3 className="text-lg font-semibold">Toggle Variants</h3>
+        <div className="flex flex-wrap gap-4 items-center">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm">Icon only:</span>
+            <ThemeToggle />
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm">With label:</span>
+            <ThemeToggle showLabel />
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm">Dropdown:</span>
+            <ThemeToggle variant="dropdown" />
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm">Small:</span>
+            <ThemeToggle size="sm" />
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm">Large:</span>
+            <ThemeToggle size="lg" />
           </div>
         </div>
-        <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-          <div className="text-sm text-gray-600 dark:text-gray-400">System Preference</div>
-          <div className="font-semibold text-lg capitalize">
-            {systemPref}
-          </div>
-        </div>
-      </div>
-      {/* Toggle Variants */}
-      <h3 className="text-lg font-semibold">Toggle Variants</h3>
-      <div className="flex flex-wrap gap-4 items-center">
-        <div className="flex items-center space-x-2">
-          <span className="text-sm">Icon only:</span>
-          <ThemeToggle />
-        </div>
-        <div className="flex items-center space-x-2">
-          <span className="text-sm">With label:</span>
-          <ThemeToggle showLabel />
-        </div>
-        <div className="flex items-center space-x-2">
-          <span className="text-sm">Dropdown:</span>
-          <ThemeToggle variant="dropdown" />
-        </div>
-        <div className="flex items-center space-x-2">
-          <span className="text-sm">Small:</span>
-          <ThemeToggle size="sm" />
-        </div>
-        <div className="flex items-center space-x-2">
-          <span className="text-sm">Large:</span>
-          <ThemeToggle size="lg" />
-        </div>
-      </div>
-
         {/* Sample UI Elements */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Sample UI Elements</h3>
@@ -91,7 +91,6 @@ export function ThemeDemo() {
               <Button variant="outline" className="w-full">Outline Button</Button>
               <Button variant="ghost" className="w-full">Ghost Button</Button>
             </div>
-            
             <div className="space-y-3">
               <input 
                 type="text" 
@@ -105,7 +104,6 @@ export function ThemeDemo() {
             </div>
           </div>
         </div>
-
         {/* Color Swatches */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Color Swatches</h3>

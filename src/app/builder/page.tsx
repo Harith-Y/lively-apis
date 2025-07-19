@@ -39,7 +39,7 @@ export default function BuilderPage() {
   // Endpoint configuration modal state
   const [endpointModalOpen, setEndpointModalOpen] = useState(false)
   const [selectedEndpointIndex, setSelectedEndpointIndex] = useState<number | null>(null)
-  const [endpointDraft, setEndpointDraft] = useState<any>(null)
+  const [endpointDraft, setEndpointDraft] = useState<unknown>(null)
 
   // Deploy modal state
   const [deployModalOpen, setDeployModalOpen] = useState(false)
@@ -125,8 +125,8 @@ export default function BuilderPage() {
       setDeploySuccess(true);
     } catch (err: unknown) {
       let message = 'Failed to deploy agent';
-      if (err && typeof err === 'object' && 'message' in err && typeof (err as any).message === 'string') {
-        message = (err as any).message;
+      if (err && typeof err === 'object' && 'message' in err && typeof (err as unknown as { message: string }).message === 'string') {
+        message = (err as unknown as { message: string }).message;
       }
       setDeployError(message);
     } finally {
@@ -659,13 +659,13 @@ export default function BuilderPage() {
           <DialogHeader>
             <DialogTitle>Configure Endpoint</DialogTitle>
           </DialogHeader>
-          {endpointDraft && (
+          {typeof endpointDraft === 'object' && endpointDraft !== null && (
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Path</label>
                 <input
                   className="w-full border border-gray-300 rounded-md p-2"
-                  value={endpointDraft.path}
+                  value={(endpointDraft as { path: string }).path}
                   onChange={e => setEndpointDraft({ ...endpointDraft, path: e.target.value })}
                 />
               </div>
@@ -673,7 +673,7 @@ export default function BuilderPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Method</label>
                 <select
                   className="w-full border border-gray-300 rounded-md p-2"
-                  value={endpointDraft.method}
+                  value={(endpointDraft as { method: string }).method}
                   onChange={e => setEndpointDraft({ ...endpointDraft, method: e.target.value })}
                 >
                   <option value="GET">GET</option>
@@ -687,7 +687,7 @@ export default function BuilderPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Summary</label>
                 <input
                   className="w-full border border-gray-300 rounded-md p-2"
-                  value={endpointDraft.summary || ''}
+                  value={(endpointDraft as { summary: string }).summary || ''}
                   onChange={e => setEndpointDraft({ ...endpointDraft, summary: e.target.value })}
                 />
               </div>
@@ -698,9 +698,11 @@ export default function BuilderPage() {
             <Button
               onClick={() => {
                 if (selectedEndpointIndex !== null && parsedAPI) {
-                  const updatedEndpoints = [...parsedAPI.endpoints]
-                  updatedEndpoints[selectedEndpointIndex] = { ...endpointDraft }
-                  setParsedAPI({ ...parsedAPI, endpoints: updatedEndpoints })
+                  const updatedEndpoints = [...parsedAPI.endpoints];
+                  if (typeof endpointDraft === 'object' && endpointDraft !== null) {
+                    updatedEndpoints[selectedEndpointIndex] = { ...endpointDraft } as ParsedAPI['endpoints'][number];
+                    setParsedAPI({ ...parsedAPI, endpoints: updatedEndpoints });
+                  }
                 }
                 setEndpointModalOpen(false)
               }}
