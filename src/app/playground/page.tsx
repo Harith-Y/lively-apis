@@ -1,14 +1,16 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+
 import { APIAnalyzer, ParsedAPI } from '@/lib/api-analyzer'
 import { AgentPlanner, AgentPlan } from '@/lib/agent-planner'
 import { AIIntegration, AgentExecution } from '@/lib/ai-integration'
 import { demoAgents, DemoAgent } from '@/lib/demo-data'
+
 import { 
   Bot, 
   Send, 
@@ -28,6 +30,23 @@ interface Message {
   timestamp: Date
 }
 
+
+
+interface APIResponse {
+  agentResponse: string
+}
+
+interface Agent {
+  id: string
+  name: string
+  status: string
+  description: string
+}
+
+interface ApiCredentials {
+  apiKey: string
+}
+
 export default function PlaygroundPage() {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -41,19 +60,15 @@ export default function PlaygroundPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [selectedAgent, setSelectedAgent] = useState('customer-support')
   const [agentPlan, setAgentPlan] = useState<AgentPlan | null>(null)
-  const [apiCredentials, setApiCredentials] = useState({ apiKey: '' })
+
+  const [apiCredentials, setApiCredentials] = useState<ApiCredentials>({ apiKey: '' })
 
   const aiIntegration = new AIIntegration()
 
   // Use demo agents from demo-data
   const agents = demoAgents
 
-  // Initialize demo agent on component mount
-  useEffect(() => {
-    initializeDemoAgent()
-  }, [selectedAgent])
-
-  const initializeDemoAgent = async () => {
+  const initializeDemoAgent = useCallback(async () => {
     try {
       const apiAnalyzer = new APIAnalyzer()
       let apiInput = ''
@@ -78,12 +93,16 @@ export default function PlaygroundPage() {
       
       const parsedAPI = await apiAnalyzer.analyzeAPI(apiInput)
       const planner = new AgentPlanner(parsedAPI)
-      const plan = await planner.planAgent(goal)
+      const plan: AgentPlan = await planner.planAgent(goal)
       setAgentPlan(plan)
     } catch (error) {
       console.error('Failed to initialize demo agent:', error)
     }
-  }
+  }, [selectedAgent])
+
+  useEffect(() => {
+    initializeDemoAgent()
+  }, [initializeDemoAgent])
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return
@@ -102,7 +121,7 @@ export default function PlaygroundPage() {
     try {
       if (agentPlan) {
         // Use real AI integration
-        const execution = await aiIntegration.testAgent(agentPlan, inputMessage)
+        const execution: APIResponse = await aiIntegration.testAgent(agentPlan, inputMessage)
         const agentResponse: Message = {
           id: (Date.now() + 1).toString(),
           type: 'agent',

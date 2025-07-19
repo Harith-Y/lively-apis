@@ -1,4 +1,4 @@
-import { AgentPlan, AgentWorkflow } from './agent-planner'
+import { AgentPlan } from './agent-planner'
 import { ParsedAPI, APIEndpoint } from './api-analyzer'
 
 export interface AIResponse {
@@ -9,8 +9,8 @@ export interface AIResponse {
 
 export interface FunctionCall {
   name: string
-  parameters: Record<string, any>
-  result?: any
+  parameters: Record<string, unknown>
+  result?: unknown
   error?: string
 }
 
@@ -96,7 +96,7 @@ export class AIIntegration {
   private async callAI(
     systemPrompt: string,
     userMessage: string,
-    functions: any[]
+    functions: FunctionCall[]
   ): Promise<AIResponse> {
     if (this.provider === 'openai') {
       return this.callOpenAI(systemPrompt, userMessage, functions)
@@ -108,7 +108,7 @@ export class AIIntegration {
   private async callOpenAI(
     systemPrompt: string,
     userMessage: string,
-    functions: any[]
+    functions: FunctionCall[]
   ): Promise<AIResponse> {
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
@@ -151,9 +151,9 @@ export class AIIntegration {
   }
 
   private async callClaude(
-    systemPrompt: string,
-    userMessage: string,
-    functions: any[]
+    _systemPrompt: string,
+    _userMessage: string,
+    _functions: FunctionCall[]
   ): Promise<AIResponse> {
     // Claude implementation would go here
     // For now, return a mock response
@@ -213,7 +213,7 @@ export class AIIntegration {
 
   private buildAPIRequest(
     endpoint: APIEndpoint,
-    parameters: Record<string, any>,
+    parameters: Record<string, unknown>,
     api: ParsedAPI,
     credentials: Record<string, string>
   ): { url: string; options: RequestInit } {
@@ -236,7 +236,7 @@ export class AIIntegration {
       .filter(p => p.location === 'path')
       .forEach(param => {
         if (parameters[param.name]) {
-          url = url.replace(`{${param.name}}`, parameters[param.name])
+          url = url.replace(`{${param.name}}`, String(parameters[param.name]))
         }
       })
 
@@ -246,7 +246,7 @@ export class AIIntegration {
       .filter(p => p.location === 'query')
       .forEach(param => {
         if (parameters[param.name] !== undefined) {
-          queryParams.append(param.name, parameters[param.name])
+          queryParams.append(param.name, String(parameters[param.name]))
         }
       })
 
@@ -258,7 +258,7 @@ export class AIIntegration {
     let body: string | undefined
     const bodyParams = endpoint.parameters.filter(p => p.location === 'body')
     if (bodyParams.length > 0 && endpoint.method !== 'GET') {
-      const bodyData: Record<string, any> = {}
+      const bodyData: Record<string, unknown> = {}
       bodyParams.forEach(param => {
         if (parameters[param.name] !== undefined) {
           bodyData[param.name] = parameters[param.name]
@@ -296,30 +296,8 @@ export class AIIntegration {
   }
 
   // Test function for development
-  async testAgent(plan: AgentPlan, testMessage: string): Promise<AgentExecution> {
-    // Mock API credentials for testing
-    const mockCredentials = {
-      apiKey: 'test_key_123'
-    }
-
-    // Mock API for testing
-    const mockAPI: ParsedAPI = {
-      name: 'Test API',
-      baseUrl: 'https://api.test.com',
-      description: 'Test API for development',
-      endpoints: [],
-      authentication: { type: 'bearer' },
-      capabilities: ['Test operations']
-    }
-
+  async testAgent(plan: AgentPlan, testMessage: string): Promise<{ agentResponse: string }> {
     // Return a mock execution for testing
-    return {
-      id: `test_${Date.now()}`,
-      userMessage: testMessage,
-      agentResponse: `This is a test response to: "${testMessage}". In a real implementation, I would process this using the configured AI model and execute any necessary API calls.`,
-      functionCalls: [],
-      timestamp: new Date(),
-      success: true
-    }
+    return { agentResponse: `This is a test response to: "${testMessage}". In a real implementation, I would process this using the configured AI model and execute any necessary API calls.` }
   }
 }
