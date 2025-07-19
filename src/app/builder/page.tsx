@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -47,6 +47,162 @@ export default function BuilderPage() {
   const [deployError, setDeployError] = useState<string | null>(null)
   const [deploySuccess, setDeploySuccess] = useState(false)
   const [deployedAgentId, setDeployedAgentId] = useState<string | null>(null)
+
+  // Code Generation modal state
+  const [codeModalOpen, setCodeModalOpen] = useState(false)
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null)
+  const [codeLoading, setCodeLoading] = useState(false)
+  const [codeError, setCodeError] = useState<string | null>(null)
+
+  // Agent Composition modal state
+  const [composeModalOpen, setComposeModalOpen] = useState(false)
+  const [templates, setTemplates] = useState<any[]>([])
+  const [templatesLoading, setTemplatesLoading] = useState(false)
+  const [templatesError, setTemplatesError] = useState<string | null>(null)
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([])
+
+  // Automated API Discovery state
+  const [apiSuggestions, setApiSuggestions] = useState<any[]>([])
+  const [apiSuggestLoading, setApiSuggestLoading] = useState(false)
+  const [apiSuggestError, setApiSuggestError] = useState<string | null>(null)
+
+  // Template Library modal state
+  const [templateLibraryOpen, setTemplateLibraryOpen] = useState(false)
+  const [libraryTemplates, setLibraryTemplates] = useState<any[]>([])
+  const [libraryLoading, setLibraryLoading] = useState(false)
+  const [libraryError, setLibraryError] = useState<string | null>(null)
+  const [previewTemplate, setPreviewTemplate] = useState<any | null>(null)
+
+  // MCP Server Management state
+  const [mcpServers, setMcpServers] = useState<any[]>([])
+  const [mcpLoading, setMcpLoading] = useState(false)
+  const [mcpError, setMcpError] = useState<string | null>(null)
+  const [newMcpName, setNewMcpName] = useState('')
+  const [newMcpUrl, setNewMcpUrl] = useState('')
+  const [selectedMcpId, setSelectedMcpId] = useState<string | null>(null)
+
+  // Enterprise Settings modal state
+  const [enterpriseModalOpen, setEnterpriseModalOpen] = useState(false)
+  // Cloud hosting config state
+  const [cloudEnv, setCloudEnv] = useState('Production')
+  const [cloudRegion, setCloudRegion] = useState('us-east-1')
+  const [cloudProvider, setCloudProvider] = useState('AWS')
+
+  // Analytics state
+  const [analytics, setAnalytics] = useState<any>(null)
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null)
+
+  // Fetch MCP servers when Deploy tab is shown
+  useEffect(() => {
+    // Only fetch if Deploy tab is visible (could add a state for active tab if needed)
+    setMcpLoading(true)
+    setMcpError(null)
+    const token = typeof window !== 'undefined' ? localStorage.getItem('sb-access-token') : null
+    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'}/api/mcp-servers`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    })
+      .then(res => res.json())
+      .then(data => {
+        setMcpServers(Array.isArray(data) ? data : [])
+        if (Array.isArray(data) && data.length > 0) setSelectedMcpId(data[0].id)
+      })
+      .catch(() => setMcpError('Failed to fetch MCP servers'))
+      .finally(() => setMcpLoading(false))
+  }, [])
+
+  useEffect(() => {
+    if (composeModalOpen) {
+      setTemplatesLoading(true)
+      setTemplatesError(null)
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'}/api/templates`)
+        .then(res => res.json())
+        .then(data => setTemplates(Array.isArray(data) ? data : []))
+        .catch(() => setTemplatesError('Failed to fetch templates'))
+        .finally(() => setTemplatesLoading(false))
+    }
+  }, [composeModalOpen])
+
+  useEffect(() => {
+    if (codeModalOpen && agentPlan && apiEndpoint) {
+      setCodeLoading(true)
+      setCodeError(null)
+      setGeneratedCode(null)
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'}/generate-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentPlan, agentName, apiEndpoint })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.code) setGeneratedCode(data.code)
+          else setCodeError('No code returned from backend')
+        })
+        .catch(err => setCodeError('Failed to fetch generated code'))
+        .finally(() => setCodeLoading(false))
+    }
+  }, [codeModalOpen, agentPlan, agentName, apiEndpoint])
+
+  useEffect(() => {
+    if (templateLibraryOpen) {
+      setLibraryLoading(true)
+      setLibraryError(null)
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'}/api/templates`)
+        .then(res => res.json())
+        .then(data => setLibraryTemplates(Array.isArray(data) ? data : []))
+        .catch(() => setLibraryError('Failed to fetch templates'))
+        .finally(() => setLibraryLoading(false))
+    }
+  }, [templateLibraryOpen])
+
+  useEffect(() => {
+    if (enterpriseModalOpen) {
+      setAnalyticsLoading(true)
+      setAnalyticsError(null)
+      setAnalytics(null)
+      const token = typeof window !== 'undefined' ? localStorage.getItem('sb-access-token') : null
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'}/api/analytics`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data && !data.error) setAnalytics(data)
+          else setAnalyticsError(data.error || 'Failed to fetch analytics')
+        })
+        .catch(() => setAnalyticsError('Failed to fetch analytics'))
+        .finally(() => setAnalyticsLoading(false))
+    }
+  }, [enterpriseModalOpen])
+
+  const handleAddMcpServer = async () => {
+    if (!newMcpName || !newMcpUrl) return
+    setMcpLoading(true)
+    setMcpError(null)
+    const token = typeof window !== 'undefined' ? localStorage.getItem('sb-access-token') : null
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'}/api/mcp-servers`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ name: newMcpName, url: newMcpUrl })
+      })
+      const data = await res.json()
+      if (data && data.id) {
+        setMcpServers(servers => [...servers, data])
+        setSelectedMcpId(data.id)
+        setNewMcpName('')
+        setNewMcpUrl('')
+      } else {
+        setMcpError('Failed to add MCP server')
+      }
+    } catch {
+      setMcpError('Failed to add MCP server')
+    } finally {
+      setMcpLoading(false)
+    }
+  }
 
   const apiAnalyzer = new APIAnalyzer()
   const aiIntegration = new AIIntegration()
@@ -134,6 +290,25 @@ export default function BuilderPage() {
     }
   };
 
+  const handleSuggestAPIs = async () => {
+    setApiSuggestLoading(true)
+    setApiSuggestError(null)
+    setApiSuggestions([])
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'}/suggest-apis`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: naturalLanguagePrompt, description: agentDescription })
+      })
+      const data = await res.json()
+      setApiSuggestions(Array.isArray(data) ? data : [])
+    } catch (err) {
+      setApiSuggestError('Failed to suggest APIs')
+    } finally {
+      setApiSuggestLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -144,6 +319,9 @@ export default function BuilderPage() {
             <p className="text-gray-600">Create intelligent AI agents from your APIs</p>
           </div>
           <div className="flex space-x-3">
+            <Button variant="outline" onClick={() => setEnterpriseModalOpen(true)}>
+              Enterprise Settings
+            </Button>
             <Button variant="outline">
               <Save className="w-4 h-4 mr-2" />
               Save Draft
@@ -304,6 +482,33 @@ export default function BuilderPage() {
                     >
                       {isAnalyzing ? 'Analyzing...' : 'Analyze API'}
                     </Button>
+                    <Button
+                      onClick={handleSuggestAPIs}
+                      disabled={apiSuggestLoading || (!naturalLanguagePrompt && !agentDescription)}
+                      className="w-full mt-2"
+                    >
+                      {apiSuggestLoading ? 'Suggesting APIs...' : 'Suggest APIs'}
+                    </Button>
+                    {apiSuggestError && <div className="text-red-400 text-xs mt-1">{apiSuggestError}</div>}
+                    {apiSuggestions.length > 0 && (
+                      <div className="mt-2 space-y-2">
+                        <div className="font-semibold text-xs text-gray-700">Suggested APIs:</div>
+                        {apiSuggestions.map((api) => (
+                          <div
+                            key={api.id}
+                            className="p-2 border rounded cursor-pointer hover:bg-blue-50"
+                            onClick={() => {
+                              setSelectedAPI(api.id)
+                              setApiEndpoint(api.url)
+                            }}
+                          >
+                            <div className="font-medium">{api.name}</div>
+                            <div className="text-xs text-gray-500">{api.description}</div>
+                            <div className="text-xs text-blue-700">{api.url}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     
                     {parsedAPI && (
                       <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -512,6 +717,54 @@ export default function BuilderPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {/* MCP Server Management Section */}
+                    <div className="mb-6">
+                      <div className="font-semibold mb-2">MCP Server Management</div>
+                      <div className="space-y-2 mb-2">
+                        {mcpLoading ? (
+                          <div>Loading MCP servers...</div>
+                        ) : mcpError ? (
+                          <div className="text-red-400 text-xs">{mcpError}</div>
+                        ) : mcpServers.length === 0 ? (
+                          <div className="text-xs text-gray-500">No MCP servers found.</div>
+                        ) : (
+                          mcpServers.map((server: any) => (
+                            <label key={server.id} className="flex items-center space-x-2">
+                              <input
+                                type="radio"
+                                name="mcp-server"
+                                checked={selectedMcpId === server.id}
+                                onChange={() => setSelectedMcpId(server.id)}
+                              />
+                              <span className="font-medium">{server.name}</span>
+                              <span className="text-xs text-gray-500">{server.url}</span>
+                            </label>
+                          ))
+                        )}
+                      </div>
+                      <div className="flex space-x-2 mb-2">
+                        <input
+                          className="border p-1 rounded text-xs flex-1"
+                          placeholder="Server Name"
+                          value={newMcpName}
+                          onChange={e => setNewMcpName(e.target.value)}
+                        />
+                        <input
+                          className="border p-1 rounded text-xs flex-1"
+                          placeholder="Server URL"
+                          value={newMcpUrl}
+                          onChange={e => setNewMcpUrl(e.target.value)}
+                        />
+                        <Button
+                          size="sm"
+                          onClick={handleAddMcpServer}
+                          disabled={mcpLoading || !newMcpName || !newMcpUrl}
+                        >
+                          Add
+                        </Button>
+                      </div>
+                    </div>
+                    {/* End MCP Server Management Section */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Deployment Environment
@@ -552,6 +805,7 @@ export default function BuilderPage() {
                           <span className="text-green-800 font-medium">
                             {agentPlan ? 'Agent Ready for Deployment' : 'Configuration Complete'}
                           </span>
+                          <span className="ml-2 text-xs text-gray-500">MCP: {mcpServers.find(s => s.id === selectedMcpId)?.name}</span>
                         </div>
                         <p className="text-green-700 text-sm mt-1">
                           {agentPlan 
@@ -625,9 +879,30 @@ export default function BuilderPage() {
                   <Save className="w-4 h-4 mr-2" />
                   Save as Template
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => setCodeModalOpen(true)}
+                  disabled={!agentPlan}
+                >
                   <Code className="w-4 h-4 mr-2" />
                   View Generated Code
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => setComposeModalOpen(true)}
+                >
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Compose Agent
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => setTemplateLibraryOpen(true)}
+                >
+                  <Code className="w-4 h-4 mr-2" />
+                  Browse Templates
                 </Button>
               </CardContent>
             </Card>
@@ -761,6 +1036,237 @@ export default function BuilderPage() {
               </DialogFooter>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={codeModalOpen} onOpenChange={setCodeModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Generated Agent Code</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-96 overflow-auto bg-gray-900 text-green-200 rounded p-4 text-xs">
+            {codeLoading ? (
+              <div>Loading...</div>
+            ) : codeError ? (
+              <div className="text-red-400">{codeError}</div>
+            ) : generatedCode ? (
+              <pre>{generatedCode}</pre>
+            ) : agentPlan ? (
+              <pre>{JSON.stringify(agentPlan, null, 2)}</pre>
+            ) : (
+              <div>No agent plan available.</div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setCodeModalOpen(false)} className="w-full mt-4">Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={composeModalOpen} onOpenChange={setComposeModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Compose Agent from Templates</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-96 overflow-auto">
+            {templatesLoading ? (
+              <div>Loading templates...</div>
+            ) : templatesError ? (
+              <div className="text-red-400">{templatesError}</div>
+            ) : templates.length === 0 ? (
+              <div>No templates found.</div>
+            ) : (
+              <>
+                <div className="space-y-2 mb-4">
+                  {templates.map((tpl) => (
+                    <label key={tpl.id} className="flex items-center space-x-2 p-2 border rounded cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedTemplateIds.includes(tpl.id)}
+                        onChange={e => {
+                          setSelectedTemplateIds(ids =>
+                            e.target.checked
+                              ? [...ids, tpl.id]
+                              : ids.filter(id => id !== tpl.id)
+                          )
+                        }}
+                      />
+                      <span className="font-medium">{tpl.name || tpl.title || `Template ${tpl.id}`}</span>
+                      <span className="text-xs text-gray-500">{tpl.description}</span>
+                    </label>
+                  ))}
+                </div>
+                {selectedTemplateIds.length > 0 && (
+                  <div className="mb-4 p-2 bg-gray-100 rounded">
+                    <div className="font-semibold mb-1">Preview:</div>
+                    {selectedTemplateIds.map(id => {
+                      const tpl = templates.find(t => t.id === id)
+                      return tpl ? (
+                        <div key={id} className="mb-2">
+                          <div className="font-medium">{tpl.name || tpl.title}</div>
+                          <div className="text-xs text-gray-600">{tpl.description}</div>
+                          {tpl.configuration && tpl.configuration.workflow && tpl.configuration.workflow.steps && (
+                            <ul className="list-disc ml-5 text-xs text-gray-700">
+                              {tpl.configuration.workflow.steps.map((step, i) => (
+                                <li key={i}>{step.name || step.type || `Step ${i+1}`}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      ) : null
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button 
+              onClick={() => {
+                // For now, just import the first selected template
+                const tpl = templates.find(t => t.id === selectedTemplateIds[0])
+                if (tpl && tpl.configuration) {
+                  setAgentPlan(tpl.configuration)
+                  setAgentName(tpl.name || tpl.title || '')
+                  setAgentDescription(tpl.description || '')
+                }
+                setComposeModalOpen(false)
+                setSelectedTemplateIds([])
+              }}
+              className="w-full mt-2"
+              disabled={selectedTemplateIds.length === 0}
+            >
+              Import Selected
+            </Button>
+            <Button onClick={() => setComposeModalOpen(false)} className="w-full mt-2">Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={templateLibraryOpen} onOpenChange={setTemplateLibraryOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Template Library</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-96 overflow-auto">
+            {libraryLoading ? (
+              <div>Loading templates...</div>
+            ) : libraryError ? (
+              <div className="text-red-400">{libraryError}</div>
+            ) : libraryTemplates.length === 0 ? (
+              <div>No templates found.</div>
+            ) : previewTemplate ? (
+              <div className="p-2">
+                <div className="font-bold text-lg mb-1">{previewTemplate.name || previewTemplate.title}</div>
+                <div className="text-gray-600 mb-2">{previewTemplate.description}</div>
+                {previewTemplate.configuration && previewTemplate.configuration.workflow && previewTemplate.configuration.workflow.steps && (
+                  <ul className="list-disc ml-5 text-xs text-gray-700 mb-2">
+                    {previewTemplate.configuration.workflow.steps.map((step: any, i: number) => (
+                      <li key={i}>{step.name || step.type || `Step ${i+1}`}</li>
+                    ))}
+                  </ul>
+                )}
+                <Button
+                  className="w-full mb-2"
+                  onClick={() => {
+                    setAgentPlan(previewTemplate.configuration)
+                    setAgentName(previewTemplate.name || previewTemplate.title || '')
+                    setAgentDescription(previewTemplate.description || '')
+                    setTemplateLibraryOpen(false)
+                    setPreviewTemplate(null)
+                  }}
+                >
+                  Import This Template
+                </Button>
+                <Button variant="outline" className="w-full" onClick={() => setPreviewTemplate(null)}>
+                  Back to Library
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {libraryTemplates.map((tpl) => (
+                  <div
+                    key={tpl.id}
+                    className="p-2 border rounded cursor-pointer hover:bg-blue-50"
+                    onClick={() => setPreviewTemplate(tpl)}
+                  >
+                    <div className="font-medium">{tpl.name || tpl.title}</div>
+                    <div className="text-xs text-gray-500">{tpl.description}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setTemplateLibraryOpen(false)} className="w-full mt-2">Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={enterpriseModalOpen} onOpenChange={setEnterpriseModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enterprise Settings</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-8 max-h-96 overflow-auto">
+            {/* Analytics Section */}
+            <div>
+              <div className="font-semibold mb-2">Analytics</div>
+              {analyticsLoading ? (
+                <div>Loading analytics...</div>
+              ) : analyticsError ? (
+                <div className="text-red-400 text-xs">{analyticsError}</div>
+              ) : analytics ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gray-100 p-4 rounded">
+                    <div className="text-2xl font-bold">{analytics.agentInvocations}</div>
+                    <div className="text-xs text-gray-600">Agent Invocations</div>
+                  </div>
+                  <div className="bg-gray-100 p-4 rounded">
+                    <div className="text-2xl font-bold">{analytics.successRate.toFixed(2)}%</div>
+                    <div className="text-xs text-gray-600">Success Rate</div>
+                  </div>
+                  <div className="bg-gray-100 p-4 rounded">
+                    <div className="text-2xl font-bold">{analytics.avgResponseTime.toFixed(2)}s</div>
+                    <div className="text-xs text-gray-600">Avg. Response Time</div>
+                  </div>
+                  <div className="bg-gray-100 p-4 rounded">
+                    <div className="text-2xl font-bold">{analytics.uptime}%</div>
+                    <div className="text-xs text-gray-600">Uptime</div>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            {/* Cloud Hosting Config Section */}
+            <div>
+              <div className="font-semibold mb-2">Cloud Hosting Configuration</div>
+              <div className="mb-2">
+                <label className="block text-xs font-medium text-gray-700 mb-1">Environment</label>
+                <select className="w-full p-2 border border-gray-300 rounded-md" value={cloudEnv} onChange={e => setCloudEnv(e.target.value)}>
+                  <option>Production</option>
+                  <option>Staging</option>
+                  <option>Development</option>
+                </select>
+              </div>
+              <div className="mb-2">
+                <label className="block text-xs font-medium text-gray-700 mb-1">Region</label>
+                <select className="w-full p-2 border border-gray-300 rounded-md" value={cloudRegion} onChange={e => setCloudRegion(e.target.value)}>
+                  <option value="us-east-1">US East (N. Virginia)</option>
+                  <option value="us-west-2">US West (Oregon)</option>
+                  <option value="eu-west-1">EU (Ireland)</option>
+                  <option value="ap-southeast-1">Asia Pacific (Singapore)</option>
+                </select>
+              </div>
+              <div className="mb-2">
+                <label className="block text-xs font-medium text-gray-700 mb-1">Cloud Provider</label>
+                <select className="w-full p-2 border border-gray-300 rounded-md" value={cloudProvider} onChange={e => setCloudProvider(e.target.value)}>
+                  <option>AWS</option>
+                  <option>Azure</option>
+                  <option>GCP</option>
+                  <option>DigitalOcean</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setEnterpriseModalOpen(false)} className="w-full mt-2">Close</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -120,6 +120,39 @@ app.post('/playground/agent-response', async (req, res) => {
   }
 });
 
+// Code generation endpoint
+app.post('/generate-code', async (req, res) => {
+  const { agentPlan, agentName, apiEndpoint } = req.body;
+  if (!agentPlan || !apiEndpoint) {
+    return res.status(400).json({ error: 'Missing agentPlan or apiEndpoint' });
+  }
+
+  // Simple code generation mock: Express route handler for the agent
+  const code = `// Auto-generated agent for ${agentName || 'Untitled Agent'}\nconst axios = require('axios');\n\nasync function handleAgentRequest(input) {\n  // Agent workflow steps\n  // (This is a mock. Replace with real logic based on agentPlan)\n  // Example: Call API endpoint\n  const response = await axios.get('${apiEndpoint}');\n  return response.data;\n}\n\nmodule.exports = { handleAgentRequest };\n`;
+
+  res.json({ code });
+});
+
+// Automated API Discovery endpoint
+app.post('/suggest-apis', async (req, res) => {
+  const { prompt, description } = req.body;
+  const text = (prompt || description || '').toLowerCase();
+  if (!text) return res.json([]);
+  // Use ilike for name/description, and overlap for tags
+  const { data, error } = await supabase
+    .from('api_catalog')
+    .select('*')
+    .or(
+      `name.ilike.%${text}%,description.ilike.%${text}%,tags.cs.{${text
+        .split(' ')
+        .map((t) => `"${t}"`)
+        .join(',')}}`
+    )
+    .limit(10);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
 // /auth/me endpoint for frontend auth state check
 app.get('/auth/me', async (req, res) => {
   try {
@@ -259,6 +292,92 @@ app.post('/agents', async (req, res) => {
     console.error('Error in /agents:', err);
     return res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+// MCP Server Management endpoints
+app.get('/api/mcp-servers', async (req, res) => {
+  let token = null;
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+    token = req.headers.authorization.replace('Bearer ', '');
+  } else if (req.cookies && req.cookies['sb-access-token']) {
+    token = req.cookies['sb-access-token'];
+  }
+  if (!token) return res.status(401).json({ error: 'Not authenticated' });
+  const { data: userData, error: userError } = await supabase.auth.getUser(token);
+  if (userError || !userData || !userData.user) {
+    return res.status(401).json({ error: 'Invalid user' });
+  }
+  const user_id = userData.user.id;
+  const { data, error } = await supabase
+    .from('mcp_servers')
+    .select('*')
+    .eq('user_id', user_id)
+    .order('created_at', { ascending: false });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+app.post('/api/mcp-servers', async (req, res) => {
+  let token = null;
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+    token = req.headers.authorization.replace('Bearer ', '');
+  } else if (req.cookies && req.cookies['sb-access-token']) {
+    token = req.cookies['sb-access-token'];
+  }
+  if (!token) return res.status(401).json({ error: 'Not authenticated' });
+  const { data: userData, error: userError } = await supabase.auth.getUser(token);
+  if (userError || !userData || !userData.user) {
+    return res.status(401).json({ error: 'Invalid user' });
+  }
+  const user_id = userData.user.id;
+  const { name, url } = req.body;
+  if (!name || !url) return res.status(400).json({ error: 'Missing name or url' });
+  const { data, error } = await supabase
+    .from('mcp_servers')
+    .insert([{ user_id, name, url }])
+    .select('*')
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// Analytics endpoint
+app.get('/api/analytics', async (req, res) => {
+  let token = null;
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+    token = req.headers.authorization.replace('Bearer ', '');
+  } else if (req.cookies && req.cookies['sb-access-token']) {
+    token = req.cookies['sb-access-token'];
+  }
+  if (!token) return res.status(401).json({ error: 'Not authenticated' });
+  const { data: userData, error: userError } = await supabase.auth.getUser(token);
+  if (userError || !userData || !userData.user) {
+    return res.status(401).json({ error: 'Invalid user' });
+  }
+  const user_id = userData.user.id;
+  // Aggregate analytics for this user
+  const { data, error } = await supabase
+    .from('agent_analytics')
+    .select('interactions, success_rate, avg_response_time')
+    .eq('user_id', user_id);
+  if (error) return res.status(500).json({ error: error.message });
+  let agentInvocations = 0, totalSuccess = 0, totalResp = 0, count = 0;
+  if (Array.isArray(data)) {
+    data.forEach(row => {
+      agentInvocations += row.interactions || 0;
+      totalSuccess += row.success_rate || 0;
+      totalResp += row.avg_response_time || 0;
+      count++;
+    });
+  }
+  const avgSuccessRate = count ? (totalSuccess / count) : 0;
+  const avgResponseTime = count ? (totalResp / count) : 0;
+  res.json({
+    agentInvocations,
+    successRate: avgSuccessRate,
+    avgResponseTime,
+    uptime: 99.9
+  });
 });
 
 const PORT = process.env.PORT || 4000;
