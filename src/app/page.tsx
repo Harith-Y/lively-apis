@@ -291,9 +291,9 @@ export default function HomePage() {
                 whileTap={{ scale: 0.95 }}
               >
                 <Button size="lg" variant="outline" asChild className="text-lg px-8 py-4 border-2 hover:bg-white/50 backdrop-blur-sm">
-                  <Link href="#demo">
-                    <Calendar className="w-5 h-5 mr-2" />
-                    Book Demo
+                  <Link href="/demo">
+                    <Play className="w-5 h-5 mr-2" />
+                    View Live Demo
                   </Link>
                 </Button>
               </motion.div>
