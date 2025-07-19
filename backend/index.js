@@ -213,6 +213,54 @@ app.get('/api/templates', async (req, res) => {
   res.json(data);
 });
 
+// Add the /agents endpoint
+app.post('/agents', async (req, res) => {
+  try {
+    // Get access token from Authorization header or cookie
+    let token = null;
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      token = req.headers.authorization.replace('Bearer ', '');
+    } else if (req.cookies && req.cookies['sb-access-token']) {
+      token = req.cookies['sb-access-token'];
+    }
+    if (!token) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    // Get user from Supabase
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !userData || !userData.user) {
+      return res.status(401).json({ error: 'Invalid user' });
+    }
+    const user_id = userData.user.id;
+    const { name, description, api_endpoint, configuration } = req.body;
+    if (!name || !api_endpoint || !configuration) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    // Insert agent into Supabase
+    const { data, error } = await supabase
+      .from('agents')
+      .insert([
+        {
+          user_id,
+          name,
+          description,
+          api_endpoint,
+          configuration,
+          status: 'active',
+        },
+      ])
+      .select('id')
+      .single();
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+    return res.status(200).json({ id: data.id });
+  } catch (err) {
+    console.error('Error in /agents:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Backend listening on port ${PORT}`);
