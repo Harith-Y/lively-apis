@@ -111,7 +111,7 @@ app.post('/playground/agent-response', async (req, res) => {
     return res.status(400).json({ agentResponse: 'Missing required fields.' });
   }
   try {
-    const ai = new AIIntegration();
+    const ai = new AIIntegration('openrouter');
     const agentResponse = await ai.executeAgent(agentPlan, message, agentPlan.api, agentPlan.apiCredentials);
     return res.json({ agentResponse: agentResponse.agentResponse });
   } catch (error) {
