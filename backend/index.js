@@ -7,7 +7,7 @@ require('dotenv').config({ path: require('path').resolve(__dirname, '.env') });
 const app = express();
 
 const allowedOrigins = [
-  process.env.NEXT_PUBLIC_BACKEND_URL,
+  process.env.FRONTEND_URL,
   'http://localhost:3000',
   'https://localhost:3000'
 ].filter(Boolean);
