@@ -42,11 +42,11 @@ const functionRegistry: Record<string, (args: Record<string, unknown>, context: 
     const productsRequest = ai.buildAPIRequest(productsEndpoint, productsCall.parameters, api, credentials);
     const productsResp = await fetch(productsRequest.url, productsRequest.options);
     if (!productsResp.ok) throw new Error('Failed to fetch products');
-    const productsData = await productsResp.json();
+    const productsData: { products?: { title: string; id: string; variants?: { inventory_item_id: string }[] }[] } = await productsResp.json();
     const products = productsData.products || [];
 
     // Step 2: Gather inventory item IDs
-    const inventoryItemIds = products.flatMap((p: any) => (p.variants?.map?.((v: any) => v.inventory_item_id) ?? [])).filter(Boolean);
+    const inventoryItemIds = products.flatMap((p: { variants?: { inventory_item_id: string }[] }) => (p.variants?.map?.((v: { inventory_item_id: string }) => v.inventory_item_id) ?? [])).filter(Boolean);
     if (!inventoryItemIds.length) return [];
 
     // Step 3: Fetch inventory levels
@@ -56,17 +56,17 @@ const functionRegistry: Record<string, (args: Record<string, unknown>, context: 
     const inventoryRequest = ai.buildAPIRequest(inventoryEndpoint, inventoryParams, api, credentials);
     const inventoryResp = await fetch(inventoryRequest.url, inventoryRequest.options);
     if (!inventoryResp.ok) throw new Error('Failed to fetch inventory levels');
-    const inventoryData = await inventoryResp.json();
+    const inventoryData: { inventory_levels?: { inventory_item_id: string; available: number }[] } = await inventoryResp.json();
     const inventoryLevels = inventoryData.inventory_levels || [];
 
     // Step 4: Map inventory levels to products
-    const inventoryMap = Object.fromEntries(inventoryLevels.map((l: any) => [l.inventory_item_id, l.available]));
-    const productsWithStock = products.map((p: any) => {
-      const totalStock = p.variants?.reduce?.((sum: number, v: any) => sum + (inventoryMap[v.inventory_item_id] || 0), 0) || 0;
+    const inventoryMap: Record<string, number> = Object.fromEntries(inventoryLevels.map((l: { inventory_item_id: string; available: number }) => [l.inventory_item_id, l.available]));
+    const productsWithStock = products.map((p: { title: string; id: string; variants?: { inventory_item_id: string }[] }) => {
+      const totalStock = p.variants?.reduce?.((sum: number, v: { inventory_item_id: string }) => sum + (inventoryMap[v.inventory_item_id] || 0), 0) || 0;
       return { title: p.title, id: p.id, totalStock };
     });
     // Step 5: Sort and return lowest stock items
-    productsWithStock.sort((a: any, b: any) => a.totalStock - b.totalStock);
+    productsWithStock.sort((a, b) => a.totalStock - b.totalStock);
     return productsWithStock.slice(0, args.limit || 3);
   },
   // Example email function (replace with real email integration)
@@ -80,8 +80,8 @@ const functionRegistry: Record<string, (args: Record<string, unknown>, context: 
 
 // Generic dynamic agent plan executor
 export async function executeAgentFunctionCalls(functionCalls: FunctionCall[], api: ParsedAPI, credentials: Record<string, string>) {
-  let context: Record<string, unknown> = {};
-  let results: FunctionCall[] = [];
+  const context: Record<string, unknown> = {};
+  const results: FunctionCall[] = [];
   for (const call of functionCalls) {
     if (functionRegistry[call.name]) {
       try {
