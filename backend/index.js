@@ -64,6 +64,22 @@ app.post('/auth/signin', async (req, res) => {
   res.status(200).json({ user: data.user, session: data.session });
 });
 
+// Playground agent response endpoint
+app.post('/playground/agent-response', async (req, res) => {
+  const { agentId, agentPlan, message } = req.body;
+  // TODO: Integrate with your AI provider here
+  // For now, return a mock response
+  if (!agentId || !agentPlan || !message) {
+    return res.status(400).json({ agentResponse: 'Missing required fields.' });
+  }
+  // Example: Call your AI provider here and get a response
+  // const aiResponse = await callAIProvider(agentPlan, message);
+  // return res.json({ agentResponse: aiResponse });
+
+  // Mock response for demonstration
+  return res.json({ agentResponse: `This is a mock AI response to: "${message}" for agent ${agentId}.` });
+});
+
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Backend listening on port ${PORT}`);
