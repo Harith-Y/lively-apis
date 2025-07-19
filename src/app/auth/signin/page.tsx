@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Bot, Mail, Lock, ArrowRight } from 'lucide-react'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Cookies from 'js-cookie'
 
 export default function SignInPage() {
   const [email, setEmail] = useState('')
@@ -32,10 +33,14 @@ export default function SignInPage() {
       if (!res.ok) {
         setError(data.error || 'Sign in failed')
       } else {
-        // Optionally store a token or set a cookie here
+        // Store access token as cookie for session
+        if (data.session && data.session.access_token) {
+          Cookies.set('sb-access-token', data.session.access_token, { path: '/', sameSite: 'lax' })
+          window.dispatchEvent(new Event('auth-changed'))
+        }
         router.push('/dashboard')
       }
-    } catch (err) {
+    } catch {
       setError('Sign in failed')
       setLoading(false)
     }

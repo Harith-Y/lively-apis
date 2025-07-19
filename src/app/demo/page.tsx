@@ -508,8 +508,7 @@ export default function DemoPage() {
 
               <Card>
                 <CardHeader className="pb-2">
-                  {/* eslint-disable-next-line react/no-unescaped-entities */}
-<CardTitle className="text-sm font-medium text-gray-600">Today's Interactions</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-600">Today&apos;s Interactions</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-green-600">{metrics.todayInteractions.toLocaleString()}</div>
@@ -551,11 +550,9 @@ export default function DemoPage() {
                         <Star key={i} className="w-4 h-4 text-yellow-400 fill-current" />
                       ))}
                     </div>
-                    {/* eslint-disable-next-line react/no-unescaped-entities */}
                     <blockquote className="text-lg text-gray-800 mb-4 italic">
-  {/* eslint-disable-next-line react/no-unescaped-entities */}
-  That's amazing! How has this impacted their business?
-</blockquote>
+                      That&apos;s amazing! How has this impacted their business?
+                    </blockquote>
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="font-semibold text-gray-900">{scenario.testimonial.name}</div>

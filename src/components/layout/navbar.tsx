@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Bot, Menu, X, Zap, User as UserIcon } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
+import Cookies from 'js-cookie'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard' },
@@ -21,9 +22,16 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:400
 export function Navbar() {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [user, setUser] = useState<any>(null)
+  interface NavbarUser {
+    id: string;
+    email: string;
+    user_metadata?: Record<string, unknown>;
+    app_metadata?: Record<string, unknown>;
+    [key: string]: unknown;
+  }
+  const [user, setUser] = useState<NavbarUser | null>(null)
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
-  const profileRef = useRef<HTMLDivElement>(null)
+  const profileRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     // Fetch user info from backend (e.g., /auth/me)
@@ -41,7 +49,10 @@ export function Navbar() {
       }
     }
     fetchUser()
-    // Optionally, poll or use websockets for auth state changes
+    // Listen for custom auth-changed event
+    const handleAuthChanged = () => fetchUser()
+    window.addEventListener('auth-changed', handleAuthChanged)
+    return () => window.removeEventListener('auth-changed', handleAuthChanged)
   }, [])
 
   // Click outside to close profile dropdown (desktop)
@@ -58,6 +69,8 @@ export function Navbar() {
 
   const handleSignOut = async () => {
     await fetch(`${BACKEND_URL}/auth/signout`, { method: 'POST', credentials: 'include' })
+    Cookies.remove('sb-access-token', { path: '/' })
+    window.dispatchEvent(new Event('auth-changed'))
     setUser(null)
     setProfileMenuOpen(false)
     setMobileMenuOpen(false)

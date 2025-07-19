@@ -1,5 +1,9 @@
 'use client'
 
+import { demoAgents } from '@/lib/demo-data'
+const agents = demoAgents
+const defaultAgentId = agents[0]?.id || 'customer-support'
+
 import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -8,8 +12,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 import { APIAnalyzer } from '@/lib/api-analyzer'
 import { AgentPlanner, AgentPlan } from '@/lib/agent-planner'
-import { AIIntegration } from '@/lib/ai-integration'
-import { demoAgents } from '@/lib/demo-data'
 
 import { 
   Bot, 
@@ -30,34 +32,61 @@ interface Message {
   timestamp: Date
 }
 
-interface APIResponse {
-  agentResponse: string
-}
-
 interface ApiCredentials {
   apiKey: string
 }
 
 export default function PlaygroundPage() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      type: 'agent',
-      content: 'Hi! I\'m your AI assistant. I can help you with order tracking, customer support, and general inquiries. How can I assist you today?',
-      timestamp: new Date()
-    }
-  ])
+  // Store chat history per agent
+  const [chats, setChats] = useState<{ [agentId: string]: Message[] }>({
+    [defaultAgentId]: [
+      {
+        id: '1',
+        type: 'agent',
+        content: `Hi! I'm ${agents[0]?.name || 'your AI assistant'}. ${agents[0]?.description || 'How can I assist you today?'}`,
+        timestamp: new Date()
+      }
+    ]
+  })
+  const [selectedAgent, setSelectedAgent] = useState(defaultAgentId)
+  const [messages, setMessages] = useState<Message[]>(chats[defaultAgentId])
   const [inputMessage, setInputMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [selectedAgent, setSelectedAgent] = useState('customer-support')
   const [agentPlan, setAgentPlan] = useState<AgentPlan | null>(null)
-
   const [apiCredentials, setApiCredentials] = useState<ApiCredentials>({ apiKey: '' })
 
-  const aiIntegration = new AIIntegration()
+  // When agent changes, load or initialize chat for that agent
+  useEffect(() => {
+    if (!chats[selectedAgent]) {
+      const agent = agents.find(a => a.id === selectedAgent)
+      setChats(prev => ({
+        ...prev,
+        [selectedAgent]: [
+          {
+            id: '1',
+            type: 'agent',
+            content: `Hi! I'm ${agent?.name || 'your AI assistant'}. ${agent?.description || 'How can I assist you today?'}`,
+            timestamp: new Date()
+          }
+        ]
+      }))
+      setMessages([
+        {
+          id: '1',
+          type: 'agent',
+          content: `Hi! I'm ${agent?.name || 'your AI assistant'}. ${agent?.description || 'How can I assist you today?'}`,
+          timestamp: new Date()
+        }
+      ])
+    } else {
+      setMessages(chats[selectedAgent])
+    }
+  }, [selectedAgent, chats])
 
-  // Use demo agents from demo-data
-  const agents = demoAgents
+  // When messages change, update chat history for the current agent
+  useEffect(() => {
+    setChats(prev => ({ ...prev, [selectedAgent]: messages }))
+  }, [messages, selectedAgent])
 
   const initializeDemoAgent = useCallback(async () => {
     try {
@@ -95,6 +124,8 @@ export default function PlaygroundPage() {
     initializeDemoAgent()
   }, [initializeDemoAgent])
 
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'
+
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return
 
@@ -111,12 +142,21 @@ export default function PlaygroundPage() {
 
     try {
       if (agentPlan) {
-        // Use real AI integration
-        const execution: APIResponse = await aiIntegration.testAgent(agentPlan, inputMessage)
+        // Use backend API for real agent response
+        const res = await fetch(`${BACKEND_URL}/playground/agent-response`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            agentId: selectedAgent,
+            agentPlan,
+            message: inputMessage
+          })
+        })
+        const data = await res.json()
         const agentResponse: Message = {
           id: (Date.now() + 1).toString(),
           type: 'agent',
-          content: execution.agentResponse,
+          content: data.agentResponse || 'Sorry, I could not process your request.',
           timestamp: new Date()
         }
         setMessages(prev => [...prev, agentResponse])
@@ -140,7 +180,8 @@ export default function PlaygroundPage() {
   const getDemoResponse = (userInput: string): string => {
     const input = userInput.toLowerCase()
     const currentAgent = agents.find(a => a.id === selectedAgent)
-    
+    const agentName = currentAgent?.name || 'your AI assistant'
+    const capabilities = currentAgent?.capabilities?.slice(0, 2).join(' and ').toLowerCase() || 'various tasks'
     if (currentAgent) {
       // Check for specific response patterns in demo data
       if (input.includes('order') || input.includes('track')) {
@@ -155,8 +196,7 @@ export default function PlaygroundPage() {
         return currentAgent.responses.return_request || currentAgent.responses.process_refund || 'I can help you with returns and refunds.'
       }
     }
-    
-    return `Thank you for your message! I'm ${currentAgent?.name || 'your AI assistant'}. I can help with ${currentAgent?.capabilities.slice(0, 2).join(' and ').toLowerCase()}. What specific task can I help you with?`
+    return `Thank you for your message! I'm ${agentName}. I can help with ${capabilities}. What specific task can I help you with?`
   }
 
   const resetConversation = () => {
@@ -334,10 +374,10 @@ export default function PlaygroundPage() {
                     key={index}
                     variant="outline"
                     size="sm"
-                    className="w-full text-left justify-start text-xs"
+                    className="w-full text-left justify-start text-xs whitespace-normal break-words truncate max-w-full px-3 py-2"
                     onClick={() => setInputMessage(scenario)}
                   >
-                    &quot;{scenario}&quot;
+                    {scenario}
                   </Button>
                 ))}
               </CardContent>

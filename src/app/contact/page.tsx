@@ -19,7 +19,8 @@ export default function ContactPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('http://localhost:4000/feedback', {
+      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'
+      const res = await fetch(`${BACKEND_URL}/feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form)
@@ -30,7 +31,7 @@ export default function ContactPage() {
       } else {
         setSubmitted(true)
       }
-    } catch (err) {
+    } catch {
       setError('Failed to send feedback. Please try again.')
     }
     setLoading(false)
@@ -42,7 +43,7 @@ export default function ContactPage() {
         <h1 className="text-3xl font-bold mb-4 text-purple-700">Contact Us</h1>
         <p className="text-gray-700 mb-6">Have questions or feedback? Fill out the form below and our team will get back to you soon.</p>
         {submitted ? (
-          <div className="text-green-600 font-semibold">Thank you for reaching out! We'll be in touch soon.</div>
+          <div className="text-green-600 font-semibold">Thank you for reaching out! We&apos;ll be in touch soon.</div>
         ) : (
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
