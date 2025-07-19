@@ -4,7 +4,17 @@ const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config({ path: require('path').resolve(__dirname, '.env') });
 
 const app = express();
-app.use(cors());
+
+const allowedOrigins = [
+  process.env.NEXT_PUBLIC_BACKEND_URL,
+  'http://localhost:3000',
+  'https://localhost:3000'
+].filter(Boolean);
+
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
 app.use(express.json());
 
 const supabase = createClient(
