@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -28,6 +28,17 @@ export default function DemoPage() {
   const [selectedInteraction, setSelectedInteraction] = useState(0)
   const [metrics, setMetrics] = useState(realTimeMetrics)
 
+  // Walkthrough state
+  const [activeTab, setActiveTab] = useState('overview')
+  const [walkthroughStep, setWalkthroughStep] = useState(0)
+  const [isWalkthroughActive, setIsWalkthroughActive] = useState(false)
+  const walkthroughInterval = useRef<NodeJS.Timeout | null>(null)
+  const liveDemoInterval = useRef<NodeJS.Timeout | null>(null)
+  const [liveDemoIndex, setLiveDemoIndex] = useState(0)
+
+  // Debug: Log state on every render
+  console.log('RENDER: isPlaying:', isPlaying, 'currentStep:', currentStep, 'activeTab:', activeTab, 'walkthroughStep:', walkthroughStep, 'isWalkthroughActive:', isWalkthroughActive)
+
   // Simulate real-time metrics updates
   useEffect(() => {
     const interval = setInterval(() => {
@@ -39,28 +50,114 @@ export default function DemoPage() {
         ticketsResolved: prev.ticketsResolved + Math.floor(Math.random() * 3)
       }))
     }, 3000)
-
     return () => clearInterval(interval)
   }, [])
 
   const scenario = customerServiceScenario
+  // Debug: Log timeline on mount
+  useEffect(() => {
+    console.log('TIMELINE:', scenario.timeline)
+  }, [])
   const beforeAfterSavings = scenario.beforeMetrics.monthlyCost - scenario.afterMetrics.monthlyCost
   const roiPercentage = Math.round((beforeAfterSavings / scenario.afterMetrics.monthlyCost) * 100)
 
-  const startDemo = () => {
+  // Walkthrough steps:
+  // 0: Overview timeline animation
+  // 1: Before/After highlight
+  // 2: Live Demo highlight
+  // 3: Metrics highlight
+  // 4: Comparison highlight
+  // 5: End
+
+  // Start the walkthrough
+  const startWalkthrough = () => {
+    setIsWalkthroughActive(true)
+    setActiveTab('overview')
+    setWalkthroughStep(0)
     setIsPlaying(true)
     setCurrentStep(0)
-    
-    // Auto-advance through steps
-    const stepInterval = setInterval(() => {
-      setCurrentStep(prev => {
-        if (prev >= scenario.timeline.length - 1) {
-          clearInterval(stepInterval)
-          return prev
+    setLiveDemoIndex(0)
+  }
+
+  // Walkthrough effect
+  useEffect(() => {
+    if (!isWalkthroughActive) return
+    if (walkthroughStep === 0) {
+      // Animate timeline in overview
+      setActiveTab('overview')
+      setIsPlaying(true)
+      setCurrentStep(0)
+      if (walkthroughInterval.current) clearInterval(walkthroughInterval.current)
+      walkthroughInterval.current = setInterval(() => {
+        setCurrentStep(prev => {
+          if (prev >= scenario.timeline.length - 1) {
+            clearInterval(walkthroughInterval.current!)
+            setTimeout(() => setWalkthroughStep(1), 3000) // 3s delay before next tab
+            return prev
+          }
+          return prev + 1
+        })
+      }, 1200)
+    } else if (walkthroughStep === 1) {
+      // Before/After highlight
+      setActiveTab('before-after')
+      setIsPlaying(false)
+      setTimeout(() => setWalkthroughStep(2), 3000) // 3s delay
+    } else if (walkthroughStep === 2) {
+      // Live Demo highlight: animate through all sample queries
+      setActiveTab('live-demo')
+      setIsPlaying(false)
+      setLiveDemoIndex(0)
+      setSelectedInteraction(0)
+      if (liveDemoInterval.current) clearInterval(liveDemoInterval.current)
+      let i = 0
+      liveDemoInterval.current = setInterval(() => {
+        i++
+        if (i < demoInteractions.length) {
+          setLiveDemoIndex(i)
+          setSelectedInteraction(i)
+        } else {
+          clearInterval(liveDemoInterval.current!)
+          setTimeout(() => setWalkthroughStep(3), 2000) // 2s after last sample
         }
-        return prev + 1
-      })
-    }, 2000)
+      }, 1500)
+    } else if (walkthroughStep === 3) {
+      // Metrics highlight
+      setActiveTab('metrics')
+      setIsPlaying(false)
+      setTimeout(() => setWalkthroughStep(4), 3000) // 3s delay
+    } else if (walkthroughStep === 4) {
+      // Comparison highlight
+      setActiveTab('comparison')
+      setIsPlaying(false)
+      setTimeout(() => setWalkthroughStep(5), 3000) // 3s delay
+    } else if (walkthroughStep === 5) {
+      // End walkthrough
+      setIsPlaying(false)
+    }
+    return () => {
+      if (walkthroughInterval.current) clearInterval(walkthroughInterval.current)
+      if (liveDemoInterval.current) clearInterval(liveDemoInterval.current)
+    }
+  }, [walkthroughStep, isWalkthroughActive])
+
+  // Optionally disable manual tab switching during walkthrough
+  const handleTabChange = (val: string) => {
+    if (isWalkthroughActive) return
+    setActiveTab(val)
+  }
+
+  // Highlight helpers
+  const highlightClass = 'ring-4 ring-blue-400 ring-opacity-60 transition-all duration-500'
+
+  // Close walkthrough complete popup
+  const handleCloseWalkthrough = () => {
+    setWalkthroughStep(0)
+    setIsWalkthroughActive(false)
+    setIsPlaying(false)
+    setCurrentStep(0)
+    setActiveTab('overview')
+    setLiveDemoIndex(0)
   }
 
   return (
@@ -91,8 +188,9 @@ export default function DemoPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
             <Button 
               size="lg" 
-              onClick={startDemo}
+              onClick={startWalkthrough}
               className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-lg px-8 py-4"
+              disabled={isWalkthroughActive}
             >
               <Play className="w-5 h-5 mr-2" />
               Start Interactive Demo
@@ -138,7 +236,7 @@ export default function DemoPage() {
           </div>
         </motion.div>
 
-        <Tabs defaultValue="overview" className="space-y-8">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-8">
           <TabsList className="grid w-full grid-cols-5 max-w-2xl mx-auto">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="before-after">Before/After</TabsTrigger>
@@ -238,7 +336,7 @@ export default function DemoPage() {
             </div>
 
             {/* Implementation Timeline */}
-            <Card>
+            <Card className={isWalkthroughActive && walkthroughStep === 0 ? highlightClass : ''}>
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <Timer className="w-5 h-5 mr-2" />
@@ -289,7 +387,7 @@ export default function DemoPage() {
 
           {/* Before/After Tab */}
           <TabsContent value="before-after" className="space-y-8">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className={`grid grid-cols-1 lg:grid-cols-2 gap-8 ${isWalkthroughActive && walkthroughStep === 1 ? highlightClass : ''}`}>
               {/* Before */}
               <Card className="border-red-200">
                 <CardHeader className="bg-red-50">
@@ -400,7 +498,7 @@ export default function DemoPage() {
 
           {/* Live Demo Tab */}
           <TabsContent value="live-demo" className="space-y-8">
-            <Card>
+            <Card className={isWalkthroughActive && walkthroughStep === 2 ? highlightClass : ''}>
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <MessageSquare className="w-5 h-5 mr-2" />
@@ -420,8 +518,9 @@ export default function DemoPage() {
                         key={interaction.id}
                         variant={selectedInteraction === index ? "default" : "outline"}
                         size="sm"
-                        className="w-full text-left justify-start text-xs h-auto p-3"
+                        className={`w-full text-left justify-start text-xs h-auto p-3 ${(isWalkthroughActive && walkthroughStep === 2 && liveDemoIndex === index) ? 'ring-2 ring-blue-400' : ''}`}
                         onClick={() => setSelectedInteraction(index)}
+                        disabled={isWalkthroughActive}
                       >
                         &quot;{interaction.userQuery}&quot;
                       </Button>
@@ -495,7 +594,7 @@ export default function DemoPage() {
 
           {/* Real-time Metrics Tab */}
           <TabsContent value="metrics" className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 ${isWalkthroughActive && walkthroughStep === 3 ? highlightClass : ''}`}>
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-gray-600">Active Users</CardTitle>
@@ -571,7 +670,7 @@ export default function DemoPage() {
 
           {/* Comparison Tab */}
           <TabsContent value="comparison" className="space-y-8">
-            <Card>
+            <Card className={isWalkthroughActive && walkthroughStep === 4 ? highlightClass : ''}>
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <BarChart3 className="w-5 h-5 mr-2" />
@@ -633,6 +732,23 @@ export default function DemoPage() {
             </Card>
           </TabsContent>
         </Tabs>
+        {/* Walkthrough End Message */}
+        {walkthroughStep === 5 && (
+          <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-30">
+            <div className="bg-white rounded-xl shadow-2xl p-8 border-2 border-blue-400 relative">
+              <button
+                className="absolute top-2 right-2 text-gray-500 hover:text-blue-600 text-xl font-bold"
+                onClick={handleCloseWalkthrough}
+                aria-label="Close walkthrough"
+                autoFocus
+              >
+                ×
+              </button>
+              <h2 className="text-2xl font-bold mb-2 text-blue-700">Walkthrough Complete!</h2>
+              <p className="text-gray-700">You&apos;ve seen all the key features. Try exploring or building your own agent!</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
