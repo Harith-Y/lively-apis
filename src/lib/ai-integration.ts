@@ -27,16 +27,47 @@ export interface AgentExecution {
 // Function registry for dynamic agent execution
 const functionRegistry: Record<string, (args: Record<string, unknown>, context: Record<string, unknown>, api: ParsedAPI, credentials: Record<string, string>) => Promise<unknown>> = {
   // Example Shopify inventory function
-  async getLowestStockItems(args, context, api, credentials) {
-    // This function should call the Shopify inventory endpoint (replace with real logic)
-    // For demo: call the first GET endpoint found
-    const endpoint = api.endpoints.find(e => e.summary.toLowerCase().includes('inventory') && e.method === 'GET') || api.endpoints[0];
-    if (!endpoint) throw new Error('No inventory endpoint found');
+  async getLowestStockItems(
+    args: { limit?: number },
+    context: Record<string, unknown>,
+    api: ParsedAPI,
+    credentials: Record<string, string>
+  ) {
+    // Step 1: Fetch products
+    const productsEndpoint = api.endpoints.find((e: APIEndpoint) => e.path === '/products.json' && e.method === 'GET');
+    if (!productsEndpoint) throw new Error('No products endpoint found');
     const ai = new AIIntegration();
-    const fakeCall = { name: 'getLowestStockItems', parameters: args };
-    const result = await ai.executeFunctionCall(fakeCall, api, credentials);
-    // Optionally process/sort/filter result here
-    return result.result;
+    const productsCall = { name: 'getLowestStockItems_products', parameters: { limit: args.limit || 50 } };
+    // Use the existing request builder
+    const productsRequest = ai.buildAPIRequest(productsEndpoint, productsCall.parameters, api, credentials);
+    const productsResp = await fetch(productsRequest.url, productsRequest.options);
+    if (!productsResp.ok) throw new Error('Failed to fetch products');
+    const productsData = await productsResp.json();
+    const products = productsData.products || [];
+
+    // Step 2: Gather inventory item IDs
+    const inventoryItemIds = products.flatMap((p: any) => (p.variants?.map?.((v: any) => v.inventory_item_id) ?? [])).filter(Boolean);
+    if (!inventoryItemIds.length) return [];
+
+    // Step 3: Fetch inventory levels
+    const inventoryEndpoint = api.endpoints.find((e: APIEndpoint) => e.path === '/inventory_levels.json' && e.method === 'GET');
+    if (!inventoryEndpoint) throw new Error('No inventory endpoint found');
+    const inventoryParams = { inventory_item_ids: inventoryItemIds.slice(0, 50).join(',') };
+    const inventoryRequest = ai.buildAPIRequest(inventoryEndpoint, inventoryParams, api, credentials);
+    const inventoryResp = await fetch(inventoryRequest.url, inventoryRequest.options);
+    if (!inventoryResp.ok) throw new Error('Failed to fetch inventory levels');
+    const inventoryData = await inventoryResp.json();
+    const inventoryLevels = inventoryData.inventory_levels || [];
+
+    // Step 4: Map inventory levels to products
+    const inventoryMap = Object.fromEntries(inventoryLevels.map((l: any) => [l.inventory_item_id, l.available]));
+    const productsWithStock = products.map((p: any) => {
+      const totalStock = p.variants?.reduce?.((sum: number, v: any) => sum + (inventoryMap[v.inventory_item_id] || 0), 0) || 0;
+      return { title: p.title, id: p.id, totalStock };
+    });
+    // Step 5: Sort and return lowest stock items
+    productsWithStock.sort((a: any, b: any) => a.totalStock - b.totalStock);
+    return productsWithStock.slice(0, args.limit || 3);
   },
   // Example email function (replace with real email integration)
   async sendEmail(args, context, api, credentials) {
@@ -303,7 +334,7 @@ export class AIIntegration {
     return `${method}${path}`.replace(/[^a-zA-Z0-9_]/g, '_').replace(/_+/g, '_')
   }
 
-  private buildAPIRequest(
+  public buildAPIRequest(
     endpoint: APIEndpoint,
     parameters: Record<string, unknown>,
     api: ParsedAPI,
