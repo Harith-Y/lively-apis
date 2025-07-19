@@ -5,9 +5,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { APIAnalyzer } from '@/lib/api-analyzer'
+
+import { APIAnalyzer, ParsedAPI } from '@/lib/api-analyzer'
 import { AgentPlanner, AgentPlan } from '@/lib/agent-planner'
-import { AIIntegration } from '@/lib/ai-integration'
+import { AIIntegration, AgentExecution } from '@/lib/ai-integration'
+import { demoAgents, DemoAgent } from '@/lib/demo-data'
+
 import { 
   Bot, 
   Send, 
@@ -57,30 +60,13 @@ export default function PlaygroundPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [selectedAgent, setSelectedAgent] = useState('customer-support')
   const [agentPlan, setAgentPlan] = useState<AgentPlan | null>(null)
+
   const [apiCredentials, setApiCredentials] = useState<ApiCredentials>({ apiKey: '' })
 
   const aiIntegration = new AIIntegration()
 
-  const agents: Agent[] = [
-    { 
-      id: 'stripe-agent', 
-      name: 'Stripe Payment Assistant', 
-      status: 'active',
-      description: 'Helps with payment processing and customer management'
-    },
-    { 
-      id: 'shopify-agent', 
-      name: 'Shopify Store Assistant', 
-      status: 'active',
-      description: 'Manages products, orders, and inventory'
-    },
-    { 
-      id: 'slack-agent', 
-      name: 'Slack Communication Bot', 
-      status: 'active',
-      description: 'Handles team communication and file sharing'
-    }
-  ]
+  // Use demo agents from demo-data
+  const agents = demoAgents
 
   const initializeDemoAgent = useCallback(async () => {
     try {
@@ -89,15 +75,15 @@ export default function PlaygroundPage() {
       let goal = ''
       
       switch (selectedAgent) {
-        case 'stripe-agent':
+        case 'payment-processor':
           apiInput = 'stripe'
           goal = 'Help users with payment processing, customer management, and subscription handling'
           break
-        case 'shopify-agent':
+        case 'ecommerce-assistant':
           apiInput = 'shopify'
           goal = 'Assist with product management, order tracking, and inventory updates'
           break
-        case 'slack-agent':
+        case 'team-communicator':
           apiInput = 'slack'
           goal = 'Help with team communication, sending messages, and file management'
           break
@@ -160,18 +146,26 @@ export default function PlaygroundPage() {
     }
   }
 
-  const getAgentResponse = (userInput: string): string => {
+  const getDemoResponse = (userInput: string): string => {
     const input = userInput.toLowerCase()
+    const currentAgent = agents.find(a => a.id === selectedAgent)
     
-    if (input.includes('order') || input.includes('track')) {
-      return 'I can help you track your order! Please provide your order number, and I\'ll look up the current status and tracking information for you.'
-    } else if (input.includes('return') || input.includes('refund')) {
-      return 'I understand you\'d like to return an item. I can help you start the return process. Could you please provide your order number and the reason for the return?'
-    } else if (input.includes('support') || input.includes('help')) {
-      return 'I\'m here to help! I can assist with order tracking, returns, product information, and general customer support questions. What specific issue can I help you with?'
-    } else {
-      return 'Thank you for your message! I\'m designed to help with customer support inquiries. Could you please provide more details about what you need assistance with?'
+    if (currentAgent) {
+      // Check for specific response patterns in demo data
+      if (input.includes('order') || input.includes('track')) {
+        return currentAgent.responses.order_status || currentAgent.responses.delivery_inquiry || 'I can help you track your order! Please provide your order number.'
+      } else if (input.includes('payment') || input.includes('charge')) {
+        return currentAgent.responses.process_payment || 'I can help you process payments securely.'
+      } else if (input.includes('message') || input.includes('send')) {
+        return currentAgent.responses.send_message || 'I can help you send messages to your team.'
+      } else if (input.includes('product') || input.includes('item')) {
+        return currentAgent.responses.product_availability || 'I can help you find product information.'
+      } else if (input.includes('return') || input.includes('refund')) {
+        return currentAgent.responses.return_request || currentAgent.responses.process_refund || 'I can help you with returns and refunds.'
+      }
     }
+    
+    return `Thank you for your message! I'm ${currentAgent?.name || 'your AI assistant'}. I can help with ${currentAgent?.capabilities.slice(0, 2).join(' and ').toLowerCase()}. What specific task can I help you with?`
   }
 
   const resetConversation = () => {
@@ -179,7 +173,7 @@ export default function PlaygroundPage() {
       {
         id: '1',
         type: 'agent',
-        content: 'Hi! I\'m your AI assistant. I can help you with order tracking, customer support, and general inquiries. How can I assist you today?',
+        content: `Hi! I'm ${agents.find(a => a.id === selectedAgent)?.name || 'your AI assistant'}. ${agents.find(a => a.id === selectedAgent)?.description || 'How can I assist you today?'}`,
         timestamp: new Date()
       }
     ])
@@ -358,6 +352,47 @@ export default function PlaygroundPage() {
               </CardContent>
             </Card>
 
+            {/* Agent Metrics */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Agent Performance</CardTitle>
+                <CardDescription>
+                  Real-time metrics for selected agent
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {(() => {
+                  const currentAgent = agents.find(a => a.id === selectedAgent)
+                  if (!currentAgent) return null
+                  
+                  return (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <MessageSquare className="w-4 h-4 text-gray-500" />
+                          <span className="text-sm text-gray-600">Interactions</span>
+                        </div>
+                        <span className="font-medium">{currentAgent.metrics.interactions.toLocaleString()}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Clock className="w-4 h-4 text-gray-500" />
+                          <span className="text-sm text-gray-600">Avg Response</span>
+                        </div>
+                        <span className="font-medium">{currentAgent.metrics.avgResponseTime}s</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <BarChart3 className="w-4 h-4 text-gray-500" />
+                          <span className="text-sm text-gray-600">Success Rate</span>
+                        </div>
+                        <span className="font-medium">{currentAgent.metrics.successRate}%</span>
+                      </div>
+                    </>
+                  )
+                })()}
+              </CardContent>
+            </Card>
             {/* API Credentials */}
             <Card>
               <CardHeader>
@@ -385,35 +420,6 @@ export default function PlaygroundPage() {
               </CardContent>
             </Card>
 
-            {/* Session Stats */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Session Stats</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <MessageSquare className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm text-gray-600">Messages</span>
-                  </div>
-                  <span className="font-medium">{messages.length}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Clock className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm text-gray-600">Avg Response</span>
-                  </div>
-                  <span className="font-medium">1.2s</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <BarChart3 className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm text-gray-600">Success Rate</span>
-                  </div>
-                  <span className="font-medium">95%</span>
-                </div>
-              </CardContent>
-            </Card>
 
             {/* Debug Info */}
             <Card>
@@ -451,8 +457,13 @@ export default function PlaygroundPage() {
   )
 
   function getTestScenarios() {
+    const currentAgent = agents.find(a => a.id === selectedAgent)
+    if (currentAgent) {
+      return currentAgent.sampleQueries
+    }
+    
     switch (selectedAgent) {
-      case 'stripe-agent':
+      case 'payment-processor':
         return [
           'Create a new customer',
           'Process a $50 payment',
@@ -460,7 +471,7 @@ export default function PlaygroundPage() {
           'Create a subscription',
           'Get payment status'
         ]
-      case 'shopify-agent':
+      case 'ecommerce-assistant':
         return [
           'Show me all products',
           'Check recent orders',
@@ -468,7 +479,7 @@ export default function PlaygroundPage() {
           'Find customer information',
           'Get order status'
         ]
-      case 'slack-agent':
+      case 'team-communicator':
         return [
           'Send a message to #general',
           'List all team members',

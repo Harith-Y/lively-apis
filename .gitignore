@@ -15,6 +15,7 @@
 
 # next.js
 /.next/
+/.bolt/
 /out/
 
 # production

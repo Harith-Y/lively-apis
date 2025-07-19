@@ -10,6 +10,10 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard' },
   { name: 'Builder', href: '/builder' },
   { name: 'Playground', href: '/playground' },
+  { name: 'Demo', href: '/demo' },
+  { name: 'Templates', href: '/templates' },
+  { name: 'Analytics', href: '/analytics' },
+  { name: 'Deploy', href: '/deploy' },
 ]
 
 export function Navbar() {
