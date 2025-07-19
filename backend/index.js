@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config({ path: require('path').resolve(__dirname, '.env') });
+const { AIIntegration } = require('./ai-integration');
 
 const app = express();
 
