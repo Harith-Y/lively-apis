@@ -4,12 +4,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './car
 import { Button } from './button'
 import { ThemeToggle, useTheme } from './theme-toggle'
 import { Sun, Moon, Monitor, Palette } from 'lucide-react'
+import { useState, useEffect } from 'react'
 
 export function ThemeDemo() {
-  const { theme, effectiveTheme, mounted } = useTheme()
+  const { theme, effectiveTheme, mounted } = useTheme();
+  const [systemPref, setSystemPref] = useState<'light' | 'dark'>('light');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setSystemPref(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    }
+  }, []);
 
   if (!mounted) {
-    return <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-64 rounded-lg" />
+    return <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-64 rounded-lg" />;
   }
 
   return (
@@ -23,66 +31,56 @@ export function ThemeDemo() {
           Test the dark mode toggle and see how it affects the interface
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Theme Status */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <div className="text-sm text-gray-600 dark:text-gray-400">Current Theme</div>
-            <div className="font-semibold text-lg capitalize flex items-center justify-center space-x-2">
-              {theme === 'system' && <Monitor className="w-4 h-4" />}
-              {theme === 'light' && <Sun className="w-4 h-4" />}
-              {theme === 'dark' && <Moon className="w-4 h-4" />}
-              <span>{theme}</span>
-            </div>
-          </div>
-          
-          <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <div className="text-sm text-gray-600 dark:text-gray-400">Effective Theme</div>
-            <div className="font-semibold text-lg capitalize flex items-center justify-center space-x-2">
-              {effectiveTheme === 'light' && <Sun className="w-4 h-4" />}
-              {effectiveTheme === 'dark' && <Moon className="w-4 h-4" />}
-              <span>{effectiveTheme}</span>
-            </div>
-          </div>
-          
-          <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <div className="text-sm text-gray-600 dark:text-gray-400">System Preference</div>
-            <div className="font-semibold text-lg capitalize">
-              {window.matchMedia('(prefers-color-scheme: dark)').matches ? 'Dark' : 'Light'}
-            </div>
+      {/* Theme Status */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <div className="text-sm text-gray-600 dark:text-gray-400">Current Theme</div>
+          <div className="font-semibold text-lg capitalize flex items-center justify-center space-x-2">
+            {theme === 'system' && <Monitor className="w-4 h-4" />}
+            {theme === 'light' && <Sun className="w-4 h-4" />}
+            {theme === 'dark' && <Moon className="w-4 h-4" />}
+            <span>{theme}</span>
           </div>
         </div>
-
-        {/* Toggle Variants */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Toggle Variants</h3>
-          <div className="flex flex-wrap gap-4 items-center">
-            <div className="flex items-center space-x-2">
-              <span className="text-sm">Icon only:</span>
-              <ThemeToggle />
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <span className="text-sm">With label:</span>
-              <ThemeToggle showLabel />
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <span className="text-sm">Dropdown:</span>
-              <ThemeToggle variant="dropdown" />
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <span className="text-sm">Small:</span>
-              <ThemeToggle size="sm" />
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <span className="text-sm">Large:</span>
-              <ThemeToggle size="lg" />
-            </div>
+        <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <div className="text-sm text-gray-600 dark:text-gray-400">Effective Theme</div>
+          <div className="font-semibold text-lg capitalize flex items-center justify-center space-x-2">
+            {effectiveTheme === 'light' && <Sun className="w-4 h-4" />}
+            {effectiveTheme === 'dark' && <Moon className="w-4 h-4" />}
+            <span>{effectiveTheme}</span>
           </div>
         </div>
+        <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <div className="text-sm text-gray-600 dark:text-gray-400">System Preference</div>
+          <div className="font-semibold text-lg capitalize">
+            {systemPref}
+          </div>
+        </div>
+      </div>
+      {/* Toggle Variants */}
+      <h3 className="text-lg font-semibold">Toggle Variants</h3>
+      <div className="flex flex-wrap gap-4 items-center">
+        <div className="flex items-center space-x-2">
+          <span className="text-sm">Icon only:</span>
+          <ThemeToggle />
+        </div>
+        <div className="flex items-center space-x-2">
+          <span className="text-sm">With label:</span>
+          <ThemeToggle showLabel />
+        </div>
+        <div className="flex items-center space-x-2">
+          <span className="text-sm">Dropdown:</span>
+          <ThemeToggle variant="dropdown" />
+        </div>
+        <div className="flex items-center space-x-2">
+          <span className="text-sm">Small:</span>
+          <ThemeToggle size="sm" />
+        </div>
+        <div className="flex items-center space-x-2">
+          <span className="text-sm">Large:</span>
+          <ThemeToggle size="lg" />
+        </div>
+      </div>
 
         {/* Sample UI Elements */}
         <div className="space-y-4">
@@ -124,5 +122,5 @@ export function ThemeDemo() {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

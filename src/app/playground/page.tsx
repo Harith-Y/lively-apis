@@ -24,6 +24,7 @@ import {
   Clock,
   Sparkles
 } from 'lucide-react'
+import { LocalTime } from '@/components/ui/LocalTime';
 
 interface Message {
   id: string
@@ -270,7 +271,7 @@ export default function PlaygroundPage() {
                           <Bot className="w-4 h-4" />
                         )}
                         <span className="text-xs opacity-75">
-                          {message.timestamp.toLocaleTimeString()}
+                          <LocalTime date={message.timestamp} />
                         </span>
                       </div>
                       <p className="text-sm">{message.content}</p>

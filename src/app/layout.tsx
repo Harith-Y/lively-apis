@@ -13,13 +13,16 @@ export const metadata: Metadata = {
   keywords: "AI agents, API automation, no-code, conversational AI, enterprise automation",
 };
 
+// NOTE: Hydration warning for <html> is expected due to SSR and client theme switching.
+// See: https://github.com/vercel/next.js/discussions/35773
+// The page is hidden until the theme is set, so users never see a mismatch.
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" data-scroll-behavior="smooth">
       <head>
         <script
           dangerouslySetInnerHTML={{

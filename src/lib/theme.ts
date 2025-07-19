@@ -21,53 +21,55 @@ export class ThemeManager {
   }
 
   private initializeTheme(): void {
+    if (typeof window === 'undefined') return;
     // Get saved preference or default to system
-    const savedTheme = localStorage.getItem('theme') as Theme
-    this.currentTheme = savedTheme || 'system'
-    
+    const savedTheme = localStorage.getItem('theme') as Theme;
+    this.currentTheme = savedTheme || 'system';
     // Apply the theme immediately
-    this.applyTheme(this.currentTheme)
-    
+    this.applyTheme(this.currentTheme);
     // Listen for system theme changes
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     mediaQuery.addEventListener('change', () => {
       if (this.currentTheme === 'system') {
-        this.applyTheme('system')
+        this.applyTheme('system');
       }
-    })
+    });
   }
 
   private applyTheme(theme: Theme): void {
-    const root = document.documentElement
-    const body = document.body
-    
+    if (typeof window === 'undefined') return;
+    const root = document.documentElement;
+    const body = document.body;
     // Remove existing theme classes
-    root.classList.remove('light', 'dark')
-    body.classList.remove('light', 'dark')
-    
-    let effectiveTheme: 'light' | 'dark'
-    
-    if (theme === 'system') {
-      effectiveTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    root.classList.remove('light', 'dark');
+    body.classList.remove('light', 'dark');
+    let effectiveTheme: 'light' | 'dark';
+    if (theme === 'dark') {
+      effectiveTheme = 'dark';
     } else {
-      effectiveTheme = theme
+      effectiveTheme = 'light';
     }
-    
     // Apply theme classes
-    root.classList.add(effectiveTheme)
-    body.classList.add(effectiveTheme)
-    
+    root.classList.add(effectiveTheme);
+    body.classList.add(effectiveTheme);
     // Update data attribute for CSS targeting
-    root.setAttribute('data-theme', effectiveTheme)
-    
+    root.setAttribute('data-theme', effectiveTheme);
+    // Debug: log the classes
+    console.log('Theme classes after ThemeManager:', root.className);
     // Notify listeners
-    this.listeners.forEach(listener => listener(this.currentTheme))
+    this.listeners.forEach(listener => listener(this.currentTheme));
   }
 
   setTheme(theme: Theme): void {
-    this.currentTheme = theme
-    localStorage.setItem('theme', theme)
-    this.applyTheme(theme)
+    this.currentTheme = theme;
+    if (typeof window !== 'undefined') {
+      if (theme === 'dark') {
+        localStorage.setItem('theme', 'dark');
+      } else {
+        localStorage.removeItem('theme');
+      }
+      this.applyTheme(theme);
+    }
   }
 
   getTheme(): Theme {
@@ -75,10 +77,11 @@ export class ThemeManager {
   }
 
   getEffectiveTheme(): 'light' | 'dark' {
-    if (this.currentTheme === 'system') {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    if (typeof window === 'undefined') return 'light';
+    if (this.currentTheme === 'dark') {
+      return 'dark';
     }
-    return this.currentTheme
+    return 'light';
   }
 
   subscribe(listener: (theme: Theme) => void): () => void {
@@ -91,4 +94,8 @@ export class ThemeManager {
     const newTheme = effectiveTheme === 'dark' ? 'light' : 'dark'
     this.setTheme(newTheme)
   }
+}
+
+export function initializeThemeScript(): string {
+  return `(function(){try{var theme=localStorage.getItem('theme')||'system';var effectiveTheme;if(theme==='system'){effectiveTheme=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}else{effectiveTheme=theme;}if(document.documentElement){document.documentElement.classList.add(effectiveTheme);document.documentElement.setAttribute('data-theme',effectiveTheme);}if(document.body){document.body.classList.add(effectiveTheme);}}catch(e){console.error('Theme initialization error:',e);}})();`;
 }
