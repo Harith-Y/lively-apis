@@ -1,0 +1,325 @@
+import { AgentPlan, AgentWorkflow } from './agent-planner'
+import { ParsedAPI, APIEndpoint } from './api-analyzer'
+
+export interface AIResponse {
+  content: string
+  functionCalls?: FunctionCall[]
+  error?: string
+}
+
+export interface FunctionCall {
+  name: string
+  parameters: Record<string, any>
+  result?: any
+  error?: string
+}
+
+export interface AgentExecution {
+  id: string
+  userMessage: string
+  agentResponse: string
+  functionCalls: FunctionCall[]
+  timestamp: Date
+  success: boolean
+  error?: string
+}
+
+export class AIIntegration {
+  private apiKey: string
+  private provider: 'openai' | 'claude'
+  private baseUrl: string
+
+  constructor(provider: 'openai' | 'claude' = 'openai', apiKey?: string) {
+    this.provider = provider
+    this.apiKey = apiKey || process.env.OPENAI_API_KEY || ''
+    this.baseUrl = provider === 'openai' 
+      ? 'https://api.openai.com/v1' 
+      : 'https://api.anthropic.com/v1'
+  }
+
+  async executeAgent(
+    plan: AgentPlan,
+    userMessage: string,
+    api: ParsedAPI,
+    apiCredentials: Record<string, string>
+  ): Promise<AgentExecution> {
+    const execution: AgentExecution = {
+      id: `exec_${Date.now()}`,
+      userMessage,
+      agentResponse: '',
+      functionCalls: [],
+      timestamp: new Date(),
+      success: false
+    }
+
+    try {
+      // Call AI model with system prompt and function definitions
+      const aiResponse = await this.callAI(
+        plan.systemPrompt,
+        userMessage,
+        plan.functionDefinitions
+      )
+
+      execution.agentResponse = aiResponse.content
+
+      // Execute any function calls
+      if (aiResponse.functionCalls) {
+        for (const functionCall of aiResponse.functionCalls) {
+          const result = await this.executeFunctionCall(
+            functionCall,
+            api,
+            apiCredentials
+          )
+          execution.functionCalls.push(result)
+        }
+
+        // If there were function calls, get a follow-up response
+        if (execution.functionCalls.length > 0) {
+          const followUpResponse = await this.getFollowUpResponse(
+            plan.systemPrompt,
+            userMessage,
+            execution.functionCalls
+          )
+          execution.agentResponse = followUpResponse.content
+        }
+      }
+
+      execution.success = true
+    } catch (error) {
+      execution.error = error instanceof Error ? error.message : 'Unknown error'
+      execution.agentResponse = this.generateErrorResponse(execution.error)
+    }
+
+    return execution
+  }
+
+  private async callAI(
+    systemPrompt: string,
+    userMessage: string,
+    functions: any[]
+  ): Promise<AIResponse> {
+    if (this.provider === 'openai') {
+      return this.callOpenAI(systemPrompt, userMessage, functions)
+    } else {
+      return this.callClaude(systemPrompt, userMessage, functions)
+    }
+  }
+
+  private async callOpenAI(
+    systemPrompt: string,
+    userMessage: string,
+    functions: any[]
+  ): Promise<AIResponse> {
+    const response = await fetch(`${this.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessage }
+        ],
+        functions: functions.length > 0 ? functions : undefined,
+        function_call: functions.length > 0 ? 'auto' : undefined,
+        temperature: 0.7,
+        max_tokens: 1000
+      })
+    })
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    const message = data.choices[0].message
+
+    const result: AIResponse = {
+      content: message.content || ''
+    }
+
+    if (message.function_call) {
+      result.functionCalls = [{
+        name: message.function_call.name,
+        parameters: JSON.parse(message.function_call.arguments || '{}')
+      }]
+    }
+
+    return result
+  }
+
+  private async callClaude(
+    systemPrompt: string,
+    userMessage: string,
+    functions: any[]
+  ): Promise<AIResponse> {
+    // Claude implementation would go here
+    // For now, return a mock response
+    return {
+      content: "I'm a Claude-powered agent ready to help with your API operations. However, Claude integration is not fully implemented in this demo."
+    }
+  }
+
+  private async executeFunctionCall(
+    functionCall: FunctionCall,
+    api: ParsedAPI,
+    credentials: Record<string, string>
+  ): Promise<FunctionCall> {
+    try {
+      // Find the corresponding endpoint
+      const endpoint = this.findEndpointForFunction(functionCall.name, api)
+      if (!endpoint) {
+        throw new Error(`Unknown function: ${functionCall.name}`)
+      }
+
+      // Build the API request
+      const apiRequest = this.buildAPIRequest(endpoint, functionCall.parameters, api, credentials)
+      
+      // Execute the API call
+      const response = await fetch(apiRequest.url, apiRequest.options)
+      
+      if (!response.ok) {
+        throw new Error(`API call failed: ${response.status} ${response.statusText}`)
+      }
+
+      const result = await response.json()
+      
+      return {
+        ...functionCall,
+        result
+      }
+    } catch (error) {
+      return {
+        ...functionCall,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  }
+
+  private findEndpointForFunction(functionName: string, api: ParsedAPI): APIEndpoint | null {
+    return api.endpoints.find(endpoint => {
+      const expectedName = this.generateFunctionName(endpoint)
+      return expectedName === functionName
+    }) || null
+  }
+
+  private generateFunctionName(endpoint: APIEndpoint): string {
+    const path = endpoint.path.replace(/[{}]/g, '').replace(/\//g, '_')
+    const method = endpoint.method.toLowerCase()
+    return `${method}${path}`.replace(/[^a-zA-Z0-9_]/g, '_').replace(/_+/g, '_')
+  }
+
+  private buildAPIRequest(
+    endpoint: APIEndpoint,
+    parameters: Record<string, any>,
+    api: ParsedAPI,
+    credentials: Record<string, string>
+  ): { url: string; options: RequestInit } {
+    let url = api.baseUrl + endpoint.path
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
+    }
+
+    // Add authentication
+    if (api.authentication.type === 'bearer') {
+      headers['Authorization'] = `Bearer ${credentials.apiKey || credentials.token}`
+    } else if (api.authentication.type === 'apiKey') {
+      if (api.authentication.location === 'header') {
+        headers[api.authentication.name || 'X-API-Key'] = credentials.apiKey || ''
+      }
+    }
+
+    // Handle path parameters
+    endpoint.parameters
+      .filter(p => p.location === 'path')
+      .forEach(param => {
+        if (parameters[param.name]) {
+          url = url.replace(`{${param.name}}`, parameters[param.name])
+        }
+      })
+
+    // Handle query parameters
+    const queryParams = new URLSearchParams()
+    endpoint.parameters
+      .filter(p => p.location === 'query')
+      .forEach(param => {
+        if (parameters[param.name] !== undefined) {
+          queryParams.append(param.name, parameters[param.name])
+        }
+      })
+
+    if (queryParams.toString()) {
+      url += '?' + queryParams.toString()
+    }
+
+    // Handle body parameters
+    let body: string | undefined
+    const bodyParams = endpoint.parameters.filter(p => p.location === 'body')
+    if (bodyParams.length > 0 && endpoint.method !== 'GET') {
+      const bodyData: Record<string, any> = {}
+      bodyParams.forEach(param => {
+        if (parameters[param.name] !== undefined) {
+          bodyData[param.name] = parameters[param.name]
+        }
+      })
+      body = JSON.stringify(bodyData)
+    }
+
+    return {
+      url,
+      options: {
+        method: endpoint.method,
+        headers,
+        body
+      }
+    }
+  }
+
+  private async getFollowUpResponse(
+    systemPrompt: string,
+    originalMessage: string,
+    functionResults: FunctionCall[]
+  ): Promise<AIResponse> {
+    const resultsContext = functionResults.map(fc => 
+      `Function ${fc.name} ${fc.error ? 'failed' : 'succeeded'}: ${fc.error || JSON.stringify(fc.result)}`
+    ).join('\n')
+
+    const followUpMessage = `Based on the function call results:\n${resultsContext}\n\nPlease provide a helpful response to the user's original request: "${originalMessage}"`
+
+    return this.callAI(systemPrompt, followUpMessage, [])
+  }
+
+  private generateErrorResponse(error: string): string {
+    return `I apologize, but I encountered an error while processing your request: ${error}. Please try again or rephrase your question.`
+  }
+
+  // Test function for development
+  async testAgent(plan: AgentPlan, testMessage: string): Promise<AgentExecution> {
+    // Mock API credentials for testing
+    const mockCredentials = {
+      apiKey: 'test_key_123'
+    }
+
+    // Mock API for testing
+    const mockAPI: ParsedAPI = {
+      name: 'Test API',
+      baseUrl: 'https://api.test.com',
+      description: 'Test API for development',
+      endpoints: [],
+      authentication: { type: 'bearer' },
+      capabilities: ['Test operations']
+    }
+
+    // Return a mock execution for testing
+    return {
+      id: `test_${Date.now()}`,
+      userMessage: testMessage,
+      agentResponse: `This is a test response to: "${testMessage}". In a real implementation, I would process this using the configured AI model and execute any necessary API calls.`,
+      functionCalls: [],
+      timestamp: new Date(),
+      success: true
+    }
+  }
+}

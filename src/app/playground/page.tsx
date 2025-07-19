@@ -1,10 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { APIAnalyzer } from '@/lib/api-analyzer'
+import { AgentPlanner } from '@/lib/agent-planner'
+import { AIIntegration } from '@/lib/ai-integration'
 import { 
   Bot, 
   Send, 
@@ -13,7 +16,8 @@ import {
   Settings,
   MessageSquare,
   BarChart3,
-  Clock
+  Clock,
+  Sparkles
 } from 'lucide-react'
 
 interface Message {
@@ -35,12 +39,68 @@ export default function PlaygroundPage() {
   const [inputMessage, setInputMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [selectedAgent, setSelectedAgent] = useState('customer-support')
+  const [agentPlan, setAgentPlan] = useState<any>(null)
+  const [apiCredentials, setApiCredentials] = useState({ apiKey: '' })
+
+  const aiIntegration = new AIIntegration()
 
   const agents = [
-    { id: 'customer-support', name: 'Customer Support Bot', status: 'active' },
-    { id: 'sales-assistant', name: 'Sales Assistant', status: 'active' },
-    { id: 'order-tracker', name: 'Order Tracker', status: 'inactive' }
+    { 
+      id: 'stripe-agent', 
+      name: 'Stripe Payment Assistant', 
+      status: 'active',
+      description: 'Helps with payment processing and customer management'
+    },
+    { 
+      id: 'shopify-agent', 
+      name: 'Shopify Store Assistant', 
+      status: 'active',
+      description: 'Manages products, orders, and inventory'
+    },
+    { 
+      id: 'slack-agent', 
+      name: 'Slack Communication Bot', 
+      status: 'active',
+      description: 'Handles team communication and file sharing'
+    }
   ]
+
+  // Initialize demo agent on component mount
+  useEffect(() => {
+    initializeDemoAgent()
+  }, [selectedAgent])
+
+  const initializeDemoAgent = async () => {
+    try {
+      const apiAnalyzer = new APIAnalyzer()
+      let apiInput = ''
+      let goal = ''
+      
+      switch (selectedAgent) {
+        case 'stripe-agent':
+          apiInput = 'stripe'
+          goal = 'Help users with payment processing, customer management, and subscription handling'
+          break
+        case 'shopify-agent':
+          apiInput = 'shopify'
+          goal = 'Assist with product management, order tracking, and inventory updates'
+          break
+        case 'slack-agent':
+          apiInput = 'slack'
+          goal = 'Help with team communication, sending messages, and file management'
+          break
+        default:
+          return
+      }
+      
+      const parsedAPI = await apiAnalyzer.analyzeAPI(apiInput)
+      const planner = new AgentPlanner(parsedAPI)
+      const plan = await planner.planAgent(goal)
+      setAgentPlan(plan)
+    } catch (error) {
+      console.error('Failed to initialize demo agent:', error)
+    }
+  }
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return
@@ -56,17 +116,32 @@ export default function PlaygroundPage() {
     setInputMessage('')
     setIsLoading(true)
 
-    // Simulate API call
-    setTimeout(() => {
-      const agentResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        type: 'agent',
-        content: getAgentResponse(inputMessage),
-        timestamp: new Date()
+    try {
+      if (agentPlan) {
+        // Use real AI integration
+        const execution = await aiIntegration.testAgent(agentPlan, inputMessage)
+        const agentResponse: Message = {
+          id: (Date.now() + 1).toString(),
+          type: 'agent',
+          content: execution.agentResponse,
+          timestamp: new Date()
+        }
+        setMessages(prev => [...prev, agentResponse])
+      } else {
+        // Fallback to mock response
+        const agentResponse: Message = {
+          id: (Date.now() + 1).toString(),
+          type: 'agent',
+          content: getAgentResponse(inputMessage),
+          timestamp: new Date()
+        }
+        setMessages(prev => [...prev, agentResponse])
       }
-      setMessages(prev => [...prev, agentResponse])
+    } catch (error) {
+      console.error('Failed to get agent response:', error)
+    } finally {
       setIsLoading(false)
-    }, 1500)
+    }
   }
 
   const getAgentResponse = (userInput: string): string => {
@@ -130,7 +205,7 @@ export default function PlaygroundPage() {
                         {agents.find(a => a.id === selectedAgent)?.name}
                       </CardTitle>
                       <CardDescription>
-                        Testing Environment
+                        {agents.find(a => a.id === selectedAgent)?.description}
                       </CardDescription>
                     </div>
                   </div>
@@ -238,6 +313,7 @@ export default function PlaygroundPage() {
                         {agent.status}
                       </span>
                     </div>
+                    <p className="text-xs text-gray-600 mt-1">{agent.description}</p>
                   </div>
                 ))}
               </CardContent>
@@ -252,13 +328,7 @@ export default function PlaygroundPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
-                {[
-                  'Where is my order?',
-                  'I want to return an item',
-                  'How do I track my package?',
-                  'Cancel my recent order',
-                  'What\'s your return policy?'
-                ].map((scenario, index) => (
+                {getTestScenarios().map((scenario, index) => (
                   <Button
                     key={index}
                     variant="outline"
@@ -269,6 +339,33 @@ export default function PlaygroundPage() {
                     &quot;{scenario}&quot;
                   </Button>
                 ))}
+              </CardContent>
+            </Card>
+
+            {/* API Credentials */}
+            <Card>
+              <CardHeader>
+                <CardTitle>API Configuration</CardTitle>
+                <CardDescription>
+                  Configure API credentials for testing
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    API Key
+                  </label>
+                  <Input
+                    type="password"
+                    placeholder="Enter API key for testing"
+                    value={apiCredentials.apiKey}
+                    onChange={(e) => setApiCredentials({ ...apiCredentials, apiKey: e.target.value })}
+                  />
+                </div>
+                <div className="text-xs text-gray-500">
+                  <Sparkles className="w-3 h-3 inline mr-1" />
+                  Demo mode: Real API calls are simulated for testing
+                </div>
               </CardContent>
             </Card>
 
@@ -336,4 +433,41 @@ export default function PlaygroundPage() {
       </div>
     </div>
   )
+
+  function getTestScenarios() {
+    switch (selectedAgent) {
+      case 'stripe-agent':
+        return [
+          'Create a new customer',
+          'Process a $50 payment',
+          'List all customers',
+          'Create a subscription',
+          'Get payment status'
+        ]
+      case 'shopify-agent':
+        return [
+          'Show me all products',
+          'Check recent orders',
+          'Update inventory levels',
+          'Find customer information',
+          'Get order status'
+        ]
+      case 'slack-agent':
+        return [
+          'Send a message to #general',
+          'List all team members',
+          'Show available channels',
+          'Upload a file',
+          'Create a new channel'
+        ]
+      default:
+        return [
+          'Hello, how can you help?',
+          'What can you do?',
+          'Show me your capabilities',
+          'Help me get started',
+          'What APIs do you support?'
+        ]
+    }
+  }
 }

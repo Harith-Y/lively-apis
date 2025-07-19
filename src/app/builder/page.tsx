@@ -1,11 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { WorkflowBuilder } from '@/components/workflow-builder'
+import { APIAnalyzer, ParsedAPI } from '@/lib/api-analyzer'
+import { AgentPlanner, AgentPlan } from '@/lib/agent-planner'
+import { AIIntegration } from '@/lib/ai-integration'
 import { 
   Bot, 
   Code, 
@@ -16,7 +20,8 @@ import {
   Upload,
   Link as LinkIcon,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  CheckCircle
 } from 'lucide-react'
 
 export default function BuilderPage() {
@@ -24,6 +29,62 @@ export default function BuilderPage() {
   const [agentDescription, setAgentDescription] = useState('')
   const [apiEndpoint, setApiEndpoint] = useState('')
   const [naturalLanguagePrompt, setNaturalLanguagePrompt] = useState('')
+  const [parsedAPI, setParsedAPI] = useState<ParsedAPI | null>(null)
+  const [agentPlan, setAgentPlan] = useState<AgentPlan | null>(null)
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [selectedAPI, setSelectedAPI] = useState<string>('')
+
+  const apiAnalyzer = new APIAnalyzer()
+  const aiIntegration = new AIIntegration()
+
+  const popularAPIs = [
+    { id: 'stripe', name: 'Stripe', description: 'Payment processing', url: 'https://api.stripe.com/v1' },
+    { id: 'shopify', name: 'Shopify', description: 'E-commerce platform', url: 'https://{shop}.myshopify.com/admin/api/2023-10' },
+    { id: 'slack', name: 'Slack', description: 'Team communication', url: 'https://slack.com/api' }
+  ]
+
+  const handleAnalyzeAPI = async () => {
+    if (!apiEndpoint && !selectedAPI) return
+    
+    setIsAnalyzing(true)
+    try {
+      const input = selectedAPI || apiEndpoint
+      const analyzed = await apiAnalyzer.analyzeAPI(input)
+      setParsedAPI(analyzed)
+    } catch (error) {
+      console.error('Failed to analyze API:', error)
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
+
+  const handleGenerateAgent = async () => {
+    if (!parsedAPI || !naturalLanguagePrompt) return
+    
+    setIsGenerating(true)
+    try {
+      const planner = new AgentPlanner(parsedAPI)
+      const plan = await planner.planAgent(naturalLanguagePrompt)
+      setAgentPlan(plan)
+    } catch (error) {
+      console.error('Failed to generate agent:', error)
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const handleTestAgent = async () => {
+    if (!agentPlan) return
+    
+    try {
+      const execution = await aiIntegration.testAgent(agentPlan, "Hello, can you help me?")
+      console.log('Test execution:', execution)
+      // You could show this in a modal or redirect to playground
+    } catch (error) {
+      console.error('Failed to test agent:', error)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -39,7 +100,11 @@ export default function BuilderPage() {
               <Save className="w-4 h-4 mr-2" />
               Save Draft
             </Button>
-            <Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
+            <Button 
+              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+              onClick={handleTestAgent}
+              disabled={!agentPlan}
+            >
               <Play className="w-4 h-4 mr-2" />
               Test Agent
             </Button>
@@ -112,10 +177,26 @@ export default function BuilderPage() {
                       rows={6}
                       className="mb-4"
                     />
-                    <Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
+                    <Button 
+                      className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                      onClick={handleGenerateAgent}
+                      disabled={!parsedAPI || !naturalLanguagePrompt || isGenerating}
+                    >
                       <Sparkles className="w-4 h-4 mr-2" />
-                      Generate Agent Workflow
+                      {isGenerating ? 'Generating...' : 'Generate Agent Workflow'}
                     </Button>
+                    
+                    {agentPlan && (
+                      <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="flex items-center">
+                          <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
+                          <span className="text-green-800 font-medium">Agent Generated Successfully!</span>
+                        </div>
+                        <p className="text-green-700 text-sm mt-1">
+                          Your agent workflow has been created with {agentPlan.workflow.steps.length} steps.
+                        </p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -135,6 +216,30 @@ export default function BuilderPage() {
                   <CardContent className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Popular APIs
+                      </label>
+                      <div className="grid grid-cols-1 gap-2 mb-4">
+                        {popularAPIs.map((api) => (
+                          <Button
+                            key={api.id}
+                            variant={selectedAPI === api.id ? "default" : "outline"}
+                            className="justify-start h-auto p-3"
+                            onClick={() => {
+                              setSelectedAPI(api.id)
+                              setApiEndpoint(api.url)
+                            }}
+                          >
+                            <div className="text-left">
+                              <div className="font-medium">{api.name}</div>
+                              <div className="text-xs opacity-75">{api.description}</div>
+                            </div>
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
                         API Endpoint URL
                       </label>
                       <Input
@@ -143,6 +248,27 @@ export default function BuilderPage() {
                         onChange={(e) => setApiEndpoint(e.target.value)}
                       />
                     </div>
+                    
+                    <Button 
+                      onClick={handleAnalyzeAPI}
+                      disabled={(!apiEndpoint && !selectedAPI) || isAnalyzing}
+                      className="w-full"
+                    >
+                      {isAnalyzing ? 'Analyzing...' : 'Analyze API'}
+                    </Button>
+                    
+                    {parsedAPI && (
+                      <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-center mb-2">
+                          <CheckCircle className="w-5 h-5 text-blue-600 mr-2" />
+                          <span className="text-blue-800 font-medium">{parsedAPI.name} Analyzed</span>
+                        </div>
+                        <p className="text-blue-700 text-sm mb-2">{parsedAPI.description}</p>
+                        <div className="text-xs text-blue-600">
+                          Found {parsedAPI.endpoints.length} endpoints, {parsedAPI.capabilities.length} capabilities
+                        </div>
+                      </div>
+                    )}
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <Button variant="outline" className="h-20 flex-col">
@@ -171,18 +297,21 @@ export default function BuilderPage() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Available Endpoints</CardTitle>
+                    <CardTitle>
+                      Available Endpoints
+                      {parsedAPI && (
+                        <span className="ml-2 text-sm font-normal text-gray-500">
+                          ({parsedAPI.endpoints.length} found)
+                        </span>
+                      )}
+                    </CardTitle>
                     <CardDescription>
-                      Detected API endpoints from your configuration
+                      {parsedAPI ? 'Detected API endpoints from your configuration' : 'Analyze an API to see available endpoints'}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {[
-                        { method: 'GET', path: '/orders/{id}', description: 'Get order details' },
-                        { method: 'POST', path: '/orders', description: 'Create new order' },
-                        { method: 'GET', path: '/customers/{id}', description: 'Get customer info' }
-                      ].map((endpoint, index) => (
+                      {parsedAPI ? parsedAPI.endpoints.slice(0, 5).map((endpoint, index) => (
                         <div key={index} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
                           <div className="flex items-center space-x-3">
                             <span className={`px-2 py-1 text-xs font-medium rounded ${
@@ -191,13 +320,19 @@ export default function BuilderPage() {
                               {endpoint.method}
                             </span>
                             <code className="text-sm text-gray-700">{endpoint.path}</code>
-                            <span className="text-sm text-gray-500">{endpoint.description}</span>
+                            <span className="text-sm text-gray-500">{endpoint.summary}</span>
                           </div>
                           <Button variant="ghost" size="sm">
                             Configure
                           </Button>
                         </div>
-                      ))}
+                      )) : (
+                        <div className="text-center py-8 text-gray-500">
+                          <Code className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                          <p>No API analyzed yet</p>
+                          <p className="text-sm">Select a popular API or enter a custom endpoint to get started</p>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -205,6 +340,25 @@ export default function BuilderPage() {
 
               {/* Behavior Tab */}
               <TabsContent value="behavior" className="space-y-6">
+                {agentPlan ? (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Generated Workflow</CardTitle>
+                      <CardDescription>
+                        Visual workflow builder for your AI agent
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <WorkflowBuilder 
+                        workflow={agentPlan.workflow}
+                        onWorkflowChange={(workflow) => {
+                          setAgentPlan({ ...agentPlan, workflow })
+                        }}
+                        onTest={handleTestAgent}
+                      />
+                    </CardContent>
+                  </Card>
+                ) : (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center">
@@ -249,7 +403,9 @@ export default function BuilderPage() {
                     </div>
                   </CardContent>
                 </Card>
+                )}
 
+                {!agentPlan && (
                 <Card>
                   <CardHeader>
                     <CardTitle>Intent Recognition</CardTitle>
@@ -284,6 +440,7 @@ export default function BuilderPage() {
                     </div>
                   </CardContent>
                 </Card>
+                )}
               </TabsContent>
 
               {/* Deploy Tab */}
@@ -336,10 +493,15 @@ export default function BuilderPage() {
                       <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
                         <div className="flex items-center">
                           <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
-                          <span className="text-green-800 font-medium">Configuration Complete</span>
+                          <span className="text-green-800 font-medium">
+                            {agentPlan ? 'Agent Ready for Deployment' : 'Configuration Complete'}
+                          </span>
                         </div>
                         <p className="text-green-700 text-sm mt-1">
-                          All required settings have been configured
+                          {agentPlan 
+                            ? 'Your AI agent has been generated and is ready for deployment'
+                            : 'All required settings have been configured'
+                          }
                         </p>
                       </div>
                       <Button className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
@@ -393,6 +555,12 @@ export default function BuilderPage() {
                   <Play className="w-4 h-4 mr-2" />
                   Test in Playground
                 </Button>
+                {agentPlan && (
+                  <Button variant="outline" className="w-full justify-start" onClick={handleTestAgent}>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Quick Test Agent
+                  </Button>
+                )}
                 <Button variant="outline" className="w-full justify-start">
                   <Save className="w-4 h-4 mr-2" />
                   Save as Template
