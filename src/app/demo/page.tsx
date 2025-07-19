@@ -5,23 +5,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { 
   Play, 
   ArrowRight, 
-  TrendingUp, 
-  Clock, 
   DollarSign, 
-  Users, 
   MessageSquare,
   CheckCircle,
   Star,
   Zap,
   Target,
-  BarChart3,
   Timer,
-  Award,
-  Sparkles
+  Sparkles,
+  BarChart3
 } from 'lucide-react'
 import { customerServiceScenario, demoInteractions, realTimeMetrics, competitorComparison } from '@/lib/demo-scenario'
 import Link from 'next/link'
@@ -162,7 +158,7 @@ export default function DemoPage() {
                     The Challenge
                   </CardTitle>
                   <CardDescription>
-                    TechMart's customer service was struggling with scale
+                    TechMart&quot;s customer service was struggling with scale
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -205,7 +201,7 @@ export default function DemoPage() {
                     The Solution
                   </CardTitle>
                   <CardDescription>
-                    LivelyAPI's AI-powered customer service transformation
+                    LivelyAPI&quot;s AI-powered customer service transformation
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -427,7 +423,7 @@ export default function DemoPage() {
                         className="w-full text-left justify-start text-xs h-auto p-3"
                         onClick={() => setSelectedInteraction(index)}
                       >
-                        "{interaction.userQuery}"
+                        &quot;{interaction.userQuery}&quot;
                       </Button>
                     ))}
                   </div>
@@ -439,7 +435,7 @@ export default function DemoPage() {
                         {/* User Message */}
                         <div className="flex justify-end">
                           <div className="bg-purple-600 text-white p-3 rounded-lg max-w-xs">
-                            <p className="text-sm">{demoInteractions[selectedInteraction].userQuery}</p>
+                            <p className="text-sm">&quot;{demoInteractions[selectedInteraction].userQuery}&quot;</p>
                           </div>
                         </div>
 
@@ -456,7 +452,7 @@ export default function DemoPage() {
                               </Badge>
                             </div>
                             <p className="text-sm text-gray-800">
-                              {demoInteractions[selectedInteraction].agentResponse}
+                              &quot;{demoInteractions[selectedInteraction].agentResponse}&quot;
                             </p>
                             
                             {/* API Calls */}
@@ -512,7 +508,8 @@ export default function DemoPage() {
 
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">Today's Interactions</CardTitle>
+                  {/* eslint-disable-next-line react/no-unescaped-entities */}
+<CardTitle className="text-sm font-medium text-gray-600">Today's Interactions</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-green-600">{metrics.todayInteractions.toLocaleString()}</div>
@@ -554,9 +551,11 @@ export default function DemoPage() {
                         <Star key={i} className="w-4 h-4 text-yellow-400 fill-current" />
                       ))}
                     </div>
+                    {/* eslint-disable-next-line react/no-unescaped-entities */}
                     <blockquote className="text-lg text-gray-800 mb-4 italic">
-                      "{scenario.testimonial.quote}"
-                    </blockquote>
+  {/* eslint-disable-next-line react/no-unescaped-entities */}
+  That's amazing! How has this impacted their business?
+</blockquote>
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="font-semibold text-gray-900">{scenario.testimonial.name}</div>

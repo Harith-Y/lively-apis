@@ -4,34 +4,12 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { 
-  Bot, 
-  Zap, 
-  Shield, 
-  Gauge, 
-  MessageSquare, 
-  Code, 
-  BarChart3, 
-  ArrowRight,
-  Sparkles,
-  Star,
-  CheckCircle,
-  Users,
-  Building,
-  Award,
-  Lock,
-  Globe,
-  Cpu,
-  Database,
-  Cloud,
-  Calendar,
-  Play
-} from 'lucide-react'
+import { Rocket, Code, Zap, ArrowRight } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 const features = [
   {
-    icon: MessageSquare,
+    icon: Code,
     title: 'Natural Language Builder',
     description: 'Describe your workflow in plain English and watch AI generate your agent automatically.'
   },
@@ -41,17 +19,17 @@ const features = [
     description: 'Connect to REST APIs, GraphQL, webhooks, and databases with zero coding required.'
   },
   {
-    icon: Gauge,
+    icon: Zap,
     title: 'Real-time Testing',
     description: 'Test your agents instantly with our interactive playground before deployment.'
   },
   {
-    icon: Shield,
+    icon: Zap,
     title: 'Enterprise Security',
     description: 'Bank-grade security with SOC 2 compliance and end-to-end encryption.'
   },
   {
-    icon: BarChart3,
+    icon: Zap,
     title: 'Advanced Analytics',
     description: 'Monitor performance, track usage, and optimize your agents with detailed insights.'
   },
@@ -75,7 +53,7 @@ const testimonials = [
     role: 'CTO',
     company: 'TechFlow Inc',
     avatar: 'SC',
-    content: 'LivelyAPI transformed our customer support. We built our first AI agent in 30 minutes and reduced response time by 85%.',
+    content: "LivelyAPI helps you build, deploy and scale AI agents in minutes",
     rating: 5,
     metrics: '85% faster responses'
   },
@@ -84,7 +62,7 @@ const testimonials = [
     role: 'Head of Operations',
     company: 'RetailMax',
     avatar: 'MR',
-    content: 'The ROI was immediate. Our payment processing agent handles 2,000+ transactions daily with 99.7% accuracy.',
+    content: "Integrate with any API and automate complex workflows",
     rating: 5,
     metrics: '$47K monthly savings'
   },
@@ -162,21 +140,21 @@ const pricingTiers = [
 ]
 
 const integrations = [
-  { name: 'Stripe', logo: '💳', category: 'Payments' },
-  { name: 'Shopify', logo: '🛍️', category: 'E-commerce' },
-  { name: 'Slack', logo: '💬', category: 'Communication' },
-  { name: 'Salesforce', logo: '☁️', category: 'CRM' },
-  { name: 'HubSpot', logo: '🎯', category: 'Marketing' },
-  { name: 'Zendesk', logo: '🎧', category: 'Support' },
-  { name: 'Notion', logo: '📝', category: 'Productivity' },
-  { name: 'Airtable', logo: '📊', category: 'Database' }
+  { name: 'Stripe', logo: '', category: 'Payments' },
+  { name: 'Shopify', logo: '', category: 'E-commerce' },
+  { name: 'Slack', logo: '', category: 'Communication' },
+  { name: 'Salesforce', logo: '', category: 'CRM' },
+  { name: 'HubSpot', logo: '', category: 'Marketing' },
+  { name: 'Zendesk', logo: '', category: 'Support' },
+  { name: 'Notion', logo: '', category: 'Productivity' },
+  { name: 'Airtable', logo: '', category: 'Database' }
 ]
 
 const securityFeatures = [
-  { icon: Shield, title: 'SOC 2 Compliant', description: 'Enterprise-grade security standards' },
-  { icon: Lock, title: 'End-to-End Encryption', description: 'All data encrypted in transit and at rest' },
-  { icon: Award, title: 'ISO 27001 Certified', description: 'International security management standards' },
-  { icon: Globe, title: 'GDPR Compliant', description: 'Full compliance with data protection regulations' }
+  { icon: Zap, title: 'SOC 2 Compliant', description: 'Enterprise-grade security standards' },
+  { icon: Zap, title: 'End-to-End Encryption', description: 'All data encrypted in transit and at rest' },
+  { icon: Zap, title: 'ISO 27001 Certified', description: 'International security management standards' },
+  { icon: Zap, title: 'GDPR Compliant', description: 'Full compliance with data protection regulations' }
 ]
 
 export default function HomePage() {
@@ -227,7 +205,7 @@ export default function HomePage() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="inline-flex items-center px-4 py-2 bg-purple-100 rounded-full text-purple-700 text-sm font-medium mb-8"
             >
-              <Sparkles className="w-4 h-4 mr-2" />
+              <Rocket className="w-4 h-4 mr-2" />
               Built for Suprathon 2025
             </motion.div>
             
@@ -281,7 +259,7 @@ export default function HomePage() {
               >
                 <Button size="lg" asChild className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-lg px-8 py-4 shadow-lg">
                   <Link href="/builder">
-                    <Bot className="w-5 h-5 mr-2" />
+                    <Code className="w-5 h-5 mr-2" />
                     Start Building Free
                   </Link>
                 </Button>
@@ -292,7 +270,7 @@ export default function HomePage() {
               >
                 <Button size="lg" variant="outline" asChild className="text-lg px-8 py-4 border-2 hover:bg-white/50 backdrop-blur-sm">
                   <Link href="/demo">
-                    <Play className="w-5 h-5 mr-2" />
+                    <Zap className="w-5 h-5 mr-2" />
                     View Live Demo
                   </Link>
                 </Button>
@@ -374,11 +352,11 @@ export default function HomePage() {
                 
                 <div className="flex mb-4">
                   {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 text-yellow-400 fill-current" />
+                    <Rocket key={i} className="w-4 h-4 text-yellow-400 fill-current" />
                   ))}
                 </div>
                 
-                <p className="text-gray-700 mb-4 italic">"{testimonial.content}"</p>
+                <p className="text-gray-700 mb-4 italic">{testimonial.content}</p>
                 
                 <div className="bg-green-50 p-3 rounded-lg border border-green-200">
                   <div className="text-sm font-medium text-green-800">{testimonial.metrics}</div>
@@ -443,7 +421,7 @@ export default function HomePage() {
                 <div className="space-y-4 mb-8">
                   {tier.features.map((feature, i) => (
                     <div key={i} className="flex items-center">
-                      <CheckCircle className="w-5 h-5 text-green-500 mr-3" />
+                      <Rocket className="w-5 h-5 text-green-500 mr-3" />
                       <span className="text-gray-700">{feature}</span>
                     </div>
                   ))}
@@ -593,7 +571,7 @@ export default function HomePage() {
               className="text-center"
             >
               <div className="w-20 h-20 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Cpu className="w-10 h-10 text-white" />
+                <Rocket className="w-10 h-10 text-white" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-4">AI Processing Layer</h3>
               <p className="text-gray-600">
@@ -609,7 +587,7 @@ export default function HomePage() {
               className="text-center"
             >
               <div className="w-20 h-20 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Database className="w-10 h-10 text-white" />
+                <Code className="w-10 h-10 text-white" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-4">Real-time Data Engine</h3>
               <p className="text-gray-600">
@@ -625,7 +603,7 @@ export default function HomePage() {
               className="text-center"
             >
               <div className="w-20 h-20 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Cloud className="w-10 h-10 text-white" />
+                <Zap className="w-10 h-10 text-white" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-4">Global Infrastructure</h3>
               <p className="text-gray-600">
@@ -657,7 +635,6 @@ export default function HomePage() {
                 whileTap={{ scale: 0.95 }}
               >
                 <Button size="lg" variant="secondary" className="text-lg px-8 py-4 bg-white text-purple-600 hover:bg-gray-100">
-                  <Calendar className="w-5 h-5 mr-2" />
                   Book Demo Call
                 </Button>
               </motion.div>
@@ -667,7 +644,7 @@ export default function HomePage() {
               >
                 <Button size="lg" variant="outline" asChild className="text-lg px-8 py-4 border-white text-white hover:bg-white hover:text-purple-600">
                   <Link href="/playground">
-                    <Play className="w-5 h-5 mr-2" />
+                    <Zap className="w-5 h-5 mr-2" />
                     Try Interactive Demo
                   </Link>
                 </Button>
@@ -762,7 +739,7 @@ export default function HomePage() {
                 step: '02',
                 title: 'Describe Your Agent',
                 description: 'Tell us what you want your agent to do in plain English. Our AI will generate the conversation flow automatically.',
-                icon: MessageSquare
+                icon: Code
               },
               {
                 step: '03',

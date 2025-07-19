@@ -5,16 +5,12 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Chart } from '@/components/ui/chart'
 import { 
-  TrendingUp, 
   DollarSign, 
-  Clock, 
-  Users, 
-  BarChart3,
-  Download,
+  CheckCircle,
   Calendar,
+  Download,
   Target,
-  Zap,
-  CheckCircle
+  Zap
 } from 'lucide-react'
 import { businessMetrics, usageAnalytics, demoAgents } from '@/lib/demo-data'
 
@@ -30,19 +26,19 @@ export default function AnalyticsPage() {
 
   const chartData = {
     interactions: usageAnalytics.dailyInteractions.map(day => ({
-      date: new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      interactions: day.interactions,
+      name: new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      value: day.interactions,
       success: day.success
     })),
     responseTime: usageAnalytics.responseTimeDistribution.map(item => ({
-      range: item.range,
-      count: item.count
+      name: item.range,
+      value: item.count
     })),
     savings: [
-      { month: 'Oct', savings: 12400 },
-      { month: 'Nov', savings: 18600 },
-      { month: 'Dec', savings: 24800 },
-      { month: 'Jan', savings: 31200 }
+      { name: 'Oct', value: 12400 },
+      { name: 'Nov', value: 18600 },
+      { name: 'Dec', value: 24800 },
+      { name: 'Jan', value: 31200 }
     ]
   }
 
@@ -58,7 +54,7 @@ export default function AnalyticsPage() {
           <div className="flex space-x-3">
             <Button variant="outline">
               <Calendar className="w-4 h-4 mr-2" />
-              Last 30 Days
+              Last 7 days
             </Button>
             <Button variant="outline">
               <Download className="w-4 h-4 mr-2" />
@@ -91,7 +87,7 @@ export default function AnalyticsPage() {
               <CardTitle className="text-sm font-medium text-blue-800">
                 Time Automated
               </CardTitle>
-              <Clock className="w-4 h-4 text-blue-600" />
+              <Zap className="w-4 h-4 text-blue-600" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-blue-900">
@@ -160,8 +156,8 @@ export default function AnalyticsPage() {
                   <Chart 
                     data={chartData.interactions}
                     type="line"
-                    dataKey="interactions"
-                    xAxisKey="date"
+                    dataKey="value"
+                    xAxisKey="name"
                     color="#8b5cf6"
                     height={250}
                   />
@@ -179,8 +175,8 @@ export default function AnalyticsPage() {
                   <Chart 
                     data={chartData.savings}
                     type="bar"
-                    dataKey="savings"
-                    xAxisKey="month"
+                    dataKey="value"
+                    xAxisKey="name"
                     color="#10b981"
                     height={250}
                   />
@@ -199,8 +195,8 @@ export default function AnalyticsPage() {
                 <Chart 
                   data={chartData.responseTime}
                   type="bar"
-                  dataKey="count"
-                  xAxisKey="range"
+                  dataKey="value"
+                  xAxisKey="name"
                   color="#3b82f6"
                   height={200}
                 />
