@@ -26,15 +26,21 @@ export interface AgentExecution {
 
 export class AIIntegration {
   private apiKey: string
-  private provider: 'openai' | 'claude'
+  private provider: 'openai' | 'claude' | 'openrouter'
   private baseUrl: string
 
-  constructor(provider: 'openai' | 'claude' = 'openai', apiKey?: string) {
+  constructor(provider: 'openai' | 'claude' | 'openrouter' = 'openai', apiKey?: string) {
     this.provider = provider
-    this.apiKey = apiKey || process.env.OPENAI_API_KEY || ''
-    this.baseUrl = provider === 'openai' 
-      ? 'https://api.openai.com/v1' 
-      : 'https://api.anthropic.com/v1'
+    if (provider === 'openrouter') {
+      this.apiKey = apiKey || process.env.OPENROUTER_API_KEY || ''
+      this.baseUrl = 'https://openrouter.ai/api/v1'
+    } else if (provider === 'openai') {
+      this.apiKey = apiKey || process.env.OPENAI_API_KEY || ''
+      this.baseUrl = 'https://api.openai.com/v1'
+    } else {
+      this.apiKey = apiKey || ''
+      this.baseUrl = 'https://api.anthropic.com/v1'
+    }
   }
 
   async executeAgent(
@@ -100,6 +106,8 @@ export class AIIntegration {
   ): Promise<AIResponse> {
     if (this.provider === 'openai') {
       return this.callOpenAI(systemPrompt, userMessage, functions)
+    } else if (this.provider === 'openrouter') {
+      return this.callOpenRouter(systemPrompt, userMessage, functions)
     } else {
       return this.callClaude(systemPrompt, userMessage, functions)
     }
@@ -131,6 +139,53 @@ export class AIIntegration {
 
     if (!response.ok) {
       throw new Error(`OpenAI API error: ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    const message = data.choices[0].message
+
+    const result: AIResponse = {
+      content: message.content || ''
+    }
+
+    if (message.function_call) {
+      result.functionCalls = [{
+        name: message.function_call.name,
+        parameters: JSON.parse(message.function_call.arguments || '{}')
+      }]
+    }
+
+    return result
+  }
+
+  private async callOpenRouter(
+    systemPrompt: string,
+    userMessage: string,
+    functions: FunctionCall[]
+  ): Promise<AIResponse> {
+    const response = await fetch(`${this.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://your-app-domain.com', // Optional: set your app domain
+        'X-Title': 'LivelyAPI', // Optional: set your app name
+      },
+      body: JSON.stringify({
+        model: 'openrouter/auto',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessage }
+        ],
+        functions: functions.length > 0 ? functions : undefined,
+        function_call: functions.length > 0 ? 'auto' : undefined,
+        temperature: 0.7,
+        max_tokens: 1000
+      })
+    })
+
+    if (!response.ok) {
+      throw new Error(`OpenRouter API error: ${response.statusText}`)
     }
 
     const data = await response.json()
