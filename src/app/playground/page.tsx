@@ -5,6 +5,7 @@ const agents = demoAgents
 const defaultAgentId = agents[0]?.id || 'customer-support'
 
 import { useState, useEffect, useCallback } from 'react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -55,6 +56,12 @@ export default function PlaygroundPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [agentPlan, setAgentPlan] = useState<AgentPlan | null>(null)
   const [apiCredentials, setApiCredentials] = useState<ApiCredentials>({ apiKey: '' })
+
+  // Playground settings state
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [temperature, setTemperature] = useState(0.7)
+  const [maxTokens, setMaxTokens] = useState(1000)
+  const [provider, setProvider] = useState<'openai' | 'claude' | 'openrouter'>('openrouter')
 
   // When agent changes, load or initialize chat for that agent
   useEffect(() => {
@@ -142,7 +149,11 @@ export default function PlaygroundPage() {
           body: JSON.stringify({
             agentId: selectedAgent,
             agentPlan,
-            message: inputMessage
+            message: inputMessage,
+            temperature,
+            maxTokens,
+            provider,
+            apiKey: apiCredentials.apiKey || undefined
           })
         })
         const data = await res.json()
@@ -212,12 +223,22 @@ export default function PlaygroundPage() {
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Testing Playground</h1>
             <p className="text-gray-600">Test and refine your AI agents in real-time</p>
           </div>
-          <div className="flex space-x-3">
+          <div className="flex space-x-3 items-center w-full sm:w-auto mt-4 sm:mt-0">
+            <select
+              className="border border-gray-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              value={provider}
+              onChange={e => setProvider(e.target.value as 'openai' | 'claude' | 'openrouter')}
+              style={{ minWidth: 120 }}
+            >
+              <option value="openai">OpenAI</option>
+              <option value="claude">Claude</option>
+              <option value="openrouter">OpenRouter</option>
+            </select>
             <Button variant="outline" onClick={resetConversation}>
               <RotateCcw className="w-4 h-4 mr-2" />
               Reset
             </Button>
-            <Button variant="outline">
+            <Button variant="outline" onClick={() => setSettingsOpen(true)}>
               <Settings className="w-4 h-4 mr-2" />
               Settings
             </Button>
@@ -298,6 +319,7 @@ export default function PlaygroundPage() {
               <div className="border-t p-4">
                 <div className="flex space-x-2">
                   <Input
+                    name="playground-message"
                     autoComplete="off"
                     placeholder="Type your message..."
                     value={inputMessage}
@@ -315,9 +337,110 @@ export default function PlaygroundPage() {
                 </div>
               </div>
             </Card>
+            {/* New row for performance/config/debug cards */}
+            <div className="mt-8 flex flex-col md:flex-row gap-4">
+              {/* Agent Performance */}
+              <Card className="flex-1">
+                <CardHeader>
+                  <CardTitle>Agent Performance</CardTitle>
+                  <CardDescription>
+                    Real-time metrics for selected agent
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {(() => {
+                    const currentAgent = agents.find(a => a.id === selectedAgent)
+                    if (!currentAgent) return null
+                    
+                    return (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <MessageSquare className="w-4 h-4 text-gray-500" />
+                            <span className="text-sm text-gray-600">Interactions</span>
+                          </div>
+                          <span className="font-medium">{currentAgent.metrics.interactions.toLocaleString()}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Clock className="w-4 h-4 text-gray-500" />
+                            <span className="text-sm text-gray-600">Avg Response</span>
+                          </div>
+                          <span className="font-medium">{currentAgent.metrics.avgResponseTime}s</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <BarChart3 className="w-4 h-4 text-gray-500" />
+                            <span className="text-sm text-gray-600">Success Rate</span>
+                          </div>
+                          <span className="font-medium">{currentAgent.metrics.successRate}%</span>
+                        </div>
+                      </>
+                    )
+                  })()}
+                </CardContent>
+              </Card>
+              {/* API Configuration */}
+              <Card className="flex-1">
+                <CardHeader>
+                  <CardTitle>API Configuration</CardTitle>
+                  <CardDescription>
+                    Configure API credentials for testing
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      API Key
+                    </label>
+                    <Input
+                      name="api-key"
+                      autoComplete="new-password"
+                      type="password"
+                      placeholder="Enter API key for testing"
+                      value={apiCredentials.apiKey}
+                      onChange={(e) => setApiCredentials({ ...apiCredentials, apiKey: e.target.value })}
+                    />
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    <Sparkles className="w-3 h-3 inline mr-1" />
+                    Demo mode: Real API calls are simulated for testing
+                  </div>
+                </CardContent>
+              </Card>
+              {/* Debug Information */}
+              <Card className="flex-1">
+                <CardHeader>
+                  <CardTitle>Debug Information</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Tabs defaultValue="logs" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="logs">Logs</TabsTrigger>
+                      <TabsTrigger value="api">API</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="logs" className="space-y-2">
+                      <div className="text-xs font-mono bg-gray-50 p-2 rounded">
+                        <div className="text-green-600">✓ Agent initialized</div>
+                        <div className="text-blue-600">→ User message received</div>
+                        <div className="text-purple-600">⚡ Processing intent</div>
+                        <div className="text-green-600">✓ Response generated</div>
+                      </div>
+                    </TabsContent>
+                    <TabsContent value="api" className="space-y-2">
+                      <div className="text-xs font-mono bg-gray-50 p-2 rounded">
+                        <div>Status: <span className="text-green-600">200 OK</span></div>
+                        <div>Latency: <span className="text-blue-600">1.2s</span></div>
+                        <div>Tokens: <span className="text-purple-600">45</span></div>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                </CardContent>
+              </Card>
+            </div>
           </div>
 
-          {/* Sidebar */}
+          {/* Sidebar: only keep agent selection and test scenarios */}
           <div className="space-y-6">
             {/* Agent Selection */}
             <Card>
@@ -376,108 +499,46 @@ export default function PlaygroundPage() {
                 ))}
               </CardContent>
             </Card>
-
-            {/* Agent Metrics */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Agent Performance</CardTitle>
-                <CardDescription>
-                  Real-time metrics for selected agent
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {(() => {
-                  const currentAgent = agents.find(a => a.id === selectedAgent)
-                  if (!currentAgent) return null
-                  
-                  return (
-                    <>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <MessageSquare className="w-4 h-4 text-gray-500" />
-                          <span className="text-sm text-gray-600">Interactions</span>
-                        </div>
-                        <span className="font-medium">{currentAgent.metrics.interactions.toLocaleString()}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <Clock className="w-4 h-4 text-gray-500" />
-                          <span className="text-sm text-gray-600">Avg Response</span>
-                        </div>
-                        <span className="font-medium">{currentAgent.metrics.avgResponseTime}s</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <BarChart3 className="w-4 h-4 text-gray-500" />
-                          <span className="text-sm text-gray-600">Success Rate</span>
-                        </div>
-                        <span className="font-medium">{currentAgent.metrics.successRate}%</span>
-                      </div>
-                    </>
-                  )
-                })()}
-              </CardContent>
-            </Card>
-            {/* API Credentials */}
-            <Card>
-              <CardHeader>
-                <CardTitle>API Configuration</CardTitle>
-                <CardDescription>
-                  Configure API credentials for testing
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    API Key
-                  </label>
-                  <Input
-                    type="password"
-                    placeholder="Enter API key for testing"
-                    value={apiCredentials.apiKey}
-                    onChange={(e) => setApiCredentials({ ...apiCredentials, apiKey: e.target.value })}
-                  />
-                </div>
-                <div className="text-xs text-gray-500">
-                  <Sparkles className="w-3 h-3 inline mr-1" />
-                  Demo mode: Real API calls are simulated for testing
-                </div>
-              </CardContent>
-            </Card>
-
-
-            {/* Debug Info */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Debug Information</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Tabs defaultValue="logs" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="logs">Logs</TabsTrigger>
-                    <TabsTrigger value="api">API</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="logs" className="space-y-2">
-                    <div className="text-xs font-mono bg-gray-50 p-2 rounded">
-                      <div className="text-green-600">✓ Agent initialized</div>
-                      <div className="text-blue-600">→ User message received</div>
-                      <div className="text-purple-600">⚡ Processing intent</div>
-                      <div className="text-green-600">✓ Response generated</div>
-                    </div>
-                  </TabsContent>
-                  <TabsContent value="api" className="space-y-2">
-                    <div className="text-xs font-mono bg-gray-50 p-2 rounded">
-                      <div>Status: <span className="text-green-600">200 OK</span></div>
-                      <div>Latency: <span className="text-blue-600">1.2s</span></div>
-                      <div>Tokens: <span className="text-purple-600">45</span></div>
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Playground Settings</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Temperature</label>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={temperature}
+                onChange={e => setTemperature(Number(e.target.value))}
+                className="w-full"
+              />
+              <div className="text-xs text-gray-500 mt-1">Controls randomness. Lower = more deterministic, higher = more creative. Current: {temperature}</div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Max Tokens</label>
+              <input
+                type="number"
+                min={100}
+                max={4000}
+                value={maxTokens}
+                onChange={e => setMaxTokens(Number(e.target.value))}
+                className="w-full border border-gray-300 rounded-md p-2"
+              />
+              <div className="text-xs text-gray-500 mt-1">Limits the length of the AI response. Current: {maxTokens}</div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setSettingsOpen(false)} className="w-full mt-4">Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 

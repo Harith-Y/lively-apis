@@ -1,8 +1,10 @@
 // AIIntegration and related logic (converted from TypeScript to JS)
 
 class AIIntegration {
-  constructor(provider = 'openai', apiKey) {
+  constructor(provider = 'openai', apiKey, temperature = 0.7, maxTokens = 1000) {
     this.provider = provider;
+    this.temperature = typeof temperature === 'number' ? temperature : 0.7;
+    this.maxTokens = typeof maxTokens === 'number' ? maxTokens : 1000;
     if (provider === 'openrouter') {
       this.apiKey = apiKey || process.env.OPENROUTER_API_KEY || '';
       this.baseUrl = 'https://openrouter.ai/api/v1';
@@ -82,8 +84,8 @@ class AIIntegration {
         ],
         functions: functions.length > 0 ? functions : undefined,
         function_call: functions.length > 0 ? 'auto' : undefined,
-        temperature: 0.7,
-        max_tokens: 1000
+        temperature: this.temperature,
+        max_tokens: this.maxTokens
       })
     });
     if (!response.ok) {
@@ -120,8 +122,8 @@ class AIIntegration {
         ],
         functions: functions.length > 0 ? functions : undefined,
         function_call: functions.length > 0 ? 'auto' : undefined,
-        temperature: 0.7,
-        max_tokens: 1000
+        temperature: this.temperature,
+        max_tokens: this.maxTokens
       })
     });
     if (!response.ok) {
