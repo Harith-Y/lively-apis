@@ -59,29 +59,21 @@ export default function PlaygroundPage() {
   useEffect(() => {
     if (!chats[selectedAgent]) {
       const agent = agents.find(a => a.id === selectedAgent)
+      const initialMessage: Message[] = [{
+        id: '1',
+        type: 'agent',
+        content: `Hi! I'm ${agent?.name || 'your AI assistant'}. ${agent?.description || 'How can I assist you today?'}`,
+        timestamp: new Date()
+      }]
       setChats(prev => ({
         ...prev,
-        [selectedAgent]: [
-          {
-            id: '1',
-            type: 'agent',
-            content: `Hi! I'm ${agent?.name || 'your AI assistant'}. ${agent?.description || 'How can I assist you today?'}`,
-            timestamp: new Date()
-          }
-        ]
+        [selectedAgent]: initialMessage
       }))
-      setMessages([
-        {
-          id: '1',
-          type: 'agent',
-          content: `Hi! I'm ${agent?.name || 'your AI assistant'}. ${agent?.description || 'How can I assist you today?'}`,
-          timestamp: new Date()
-        }
-      ])
+      setMessages(initialMessage)
     } else {
       setMessages(chats[selectedAgent])
     }
-  }, [selectedAgent, chats])
+  }, [selectedAgent])
 
   // When messages change, update chat history for the current agent
   useEffect(() => {
