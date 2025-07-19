@@ -112,6 +112,54 @@ app.post('/auth/signout', (req, res) => {
   res.json({ success: true });
 });
 
+// API Docs endpoint
+app.get('/api-docs', (req, res) => {
+  res.json({
+    endpoints: [
+      {
+        path: '/feedback',
+        method: 'POST',
+        description: 'Submit feedback (contact form)',
+        request: { name: 'string', email: 'string', message: 'string' },
+        response: { success: 'boolean' }
+      },
+      {
+        path: '/auth/signup',
+        method: 'POST',
+        description: 'Sign up a new user',
+        request: { name: 'string', email: 'string', password: 'string' },
+        response: { user: 'object' }
+      },
+      {
+        path: '/auth/signin',
+        method: 'POST',
+        description: 'Sign in a user',
+        request: { email: 'string', password: 'string' },
+        response: { user: 'object', session: 'object' }
+      },
+      {
+        path: '/auth/signout',
+        method: 'POST',
+        description: 'Sign out the current user (clears cookie)',
+        response: { success: 'boolean' }
+      },
+      {
+        path: '/auth/me',
+        method: 'GET',
+        description: 'Get the current authenticated user',
+        response: { user: 'object|null' }
+      },
+      {
+        path: '/playground/agent-response',
+        method: 'POST',
+        description: 'Get an AI agent response for a message',
+        request: { agentId: 'string', agentPlan: 'object', message: 'string' },
+        response: { agentResponse: 'string' }
+      }
+    ]
+  })
+})
+
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Backend listening on port ${PORT}`);
