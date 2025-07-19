@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -34,6 +35,18 @@ export default function BuilderPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [selectedAPI, setSelectedAPI] = useState<string>('')
+
+  // Endpoint configuration modal state
+  const [endpointModalOpen, setEndpointModalOpen] = useState(false)
+  const [selectedEndpointIndex, setSelectedEndpointIndex] = useState<number | null>(null)
+  const [endpointDraft, setEndpointDraft] = useState<any>(null)
+
+  // Deploy modal state
+  const [deployModalOpen, setDeployModalOpen] = useState(false)
+  const [deployLoading, setDeployLoading] = useState(false)
+  const [deployError, setDeployError] = useState<string | null>(null)
+  const [deploySuccess, setDeploySuccess] = useState(false)
+  const [deployedAgentId, setDeployedAgentId] = useState<string | null>(null)
 
   const apiAnalyzer = new APIAnalyzer()
   const aiIntegration = new AIIntegration()
@@ -85,6 +98,41 @@ export default function BuilderPage() {
       console.error('Failed to test agent:', error)
     }
   }
+
+  const handleDeployAgent = async () => {
+    if (!agentPlan || !parsedAPI) return;
+    setDeployLoading(true);
+    setDeployError(null);
+    setDeploySuccess(false);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('sb-access-token') : null;
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'}/agents`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          name: agentName || 'Untitled Agent',
+          description: agentDescription || '',
+          api_endpoint: apiEndpoint || parsedAPI.baseUrl,
+          configuration: agentPlan,
+        })
+      });
+      if (!res.ok) throw new Error('Failed to deploy agent');
+      const data = await res.json();
+      setDeployedAgentId(data.id || null);
+      setDeploySuccess(true);
+    } catch (err: unknown) {
+      let message = 'Failed to deploy agent';
+      if (err && typeof err === 'object' && 'message' in err && typeof (err as any).message === 'string') {
+        message = (err as any).message;
+      }
+      setDeployError(message);
+    } finally {
+      setDeployLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -322,7 +370,15 @@ export default function BuilderPage() {
                             <code className="text-sm text-gray-700">{endpoint.path}</code>
                             <span className="text-sm text-gray-500">{endpoint.summary}</span>
                           </div>
-                          <Button variant="ghost" size="sm">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedEndpointIndex(index)
+                              setEndpointDraft({ ...endpoint })
+                              setEndpointModalOpen(true)
+                            }}
+                          >
                             Configure
                           </Button>
                         </div>
@@ -504,7 +560,11 @@ export default function BuilderPage() {
                           }
                         </p>
                       </div>
-                      <Button className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
+                      <Button
+                        className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                        onClick={() => setDeployModalOpen(true)}
+                        disabled={!agentPlan}
+                      >
                         Deploy Agent
                         <ArrowRight className="w-4 h-4 ml-2" />
                       </Button>
@@ -594,6 +654,113 @@ export default function BuilderPage() {
           </div>
         </div>
       </div>
+      <Dialog open={endpointModalOpen} onOpenChange={setEndpointModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Configure Endpoint</DialogTitle>
+          </DialogHeader>
+          {endpointDraft && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Path</label>
+                <input
+                  className="w-full border border-gray-300 rounded-md p-2"
+                  value={endpointDraft.path}
+                  onChange={e => setEndpointDraft({ ...endpointDraft, path: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Method</label>
+                <select
+                  className="w-full border border-gray-300 rounded-md p-2"
+                  value={endpointDraft.method}
+                  onChange={e => setEndpointDraft({ ...endpointDraft, method: e.target.value })}
+                >
+                  <option value="GET">GET</option>
+                  <option value="POST">POST</option>
+                  <option value="PUT">PUT</option>
+                  <option value="DELETE">DELETE</option>
+                  <option value="PATCH">PATCH</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Summary</label>
+                <input
+                  className="w-full border border-gray-300 rounded-md p-2"
+                  value={endpointDraft.summary || ''}
+                  onChange={e => setEndpointDraft({ ...endpointDraft, summary: e.target.value })}
+                />
+              </div>
+              {/* You can add more fields for parameters, etc. here */}
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                if (selectedEndpointIndex !== null && parsedAPI) {
+                  const updatedEndpoints = [...parsedAPI.endpoints]
+                  updatedEndpoints[selectedEndpointIndex] = { ...endpointDraft }
+                  setParsedAPI({ ...parsedAPI, endpoints: updatedEndpoints })
+                }
+                setEndpointModalOpen(false)
+              }}
+              className="w-full mt-4"
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={deployModalOpen} onOpenChange={setDeployModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Deploy Agent</DialogTitle>
+          </DialogHeader>
+          {deploySuccess ? (
+            <div className="space-y-4">
+              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-center">
+                  <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
+                  <span className="text-green-800 font-medium">Agent Deployed Successfully!</span>
+                </div>
+                <p className="text-green-700 text-sm mt-1">
+                  Your agent is now live and ready to use.<br />
+                  <span className="font-mono">ID: {deployedAgentId}</span>
+                </p>
+                <div className="mt-2">
+                  <span className="text-xs text-gray-500">Deployment URL:</span><br />
+                  <span className="text-xs font-mono text-blue-700">https://agents.livelyapi.com/agent/{deployedAgentId || '...'}</span>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={() => setDeployModalOpen(false)} className="w-full mt-4">Close</Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p>Are you sure you want to deploy this agent? This will make it live and accessible via API and chat interfaces.</p>
+              {deployError && <div className="text-red-600 text-sm">{deployError}</div>}
+              <DialogFooter>
+                <Button
+                  onClick={handleDeployAgent}
+                  className="w-full mt-4"
+                  disabled={deployLoading}
+                >
+                  {deployLoading ? 'Deploying...' : 'Confirm & Deploy'}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setDeployModalOpen(false)}
+                  className="w-full mt-2"
+                  disabled={deployLoading}
+                >
+                  Cancel
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
