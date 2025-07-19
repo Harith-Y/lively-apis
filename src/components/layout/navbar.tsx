@@ -3,8 +3,9 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Bot, Menu, X, Zap } from 'lucide-react'
-import { useState } from 'react'
+import { Bot, Menu, X, Zap, User as UserIcon } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { supabase } from '@/lib/supabase'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard' },
@@ -19,11 +20,40 @@ const navigation = [
 export function Navbar() {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [user, setUser] = useState<any>(null)
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const profileRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data } = await supabase.auth.getUser()
+      setUser(data?.user || null)
+    }
+    getUser()
+    const { data: listener } = supabase.auth.onAuthStateChange(() => {
+      getUser()
+    })
+    return () => {
+      listener?.subscription.unsubscribe()
+    }
+  }, [])
+
+  // Click outside to close profile dropdown (desktop)
+  useEffect(() => {
+    if (!profileMenuOpen) return
+    function handleClick(e: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setProfileMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [profileMenuOpen])
 
   return (
     <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
@@ -49,66 +79,101 @@ export function Navbar() {
             ))}
           </div>
 
-          {/* Desktop Auth Buttons */}
+          {/* Desktop Auth/Profile */}
           <div className="hidden md:flex items-center space-x-4">
-            <Button variant="ghost" asChild>
-              <Link href="/auth/signin">Sign In</Link>
-            </Button>
-            <Button asChild className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
-              <Link href="/auth/signup">
-                <Zap className="w-4 h-4 mr-2" />
-                Get Started
-              </Link>
-            </Button>
-          </div>
-
-          {/* Mobile menu button */}
-          <div className="md:hidden">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              {mobileMenuOpen ? (
-                <X className="w-5 h-5" />
-              ) : (
-                <Menu className="w-5 h-5" />
-              )}
-            </Button>
-          </div>
-        </div>
-
-        {/* Mobile Navigation */}
-        {mobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-gray-200">
-            <div className="flex flex-col space-y-4">
-              {navigation.map((item) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={`text-sm font-medium transition-colors hover:text-purple-600 ${
-                    pathname === item.href
-                      ? 'text-purple-600'
-                      : 'text-gray-600'
-                  }`}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  {item.name}
-                </Link>
-              ))}
-              <div className="flex flex-col space-y-2 pt-4 border-t border-gray-200">
+            {user ? (
+              <div className="relative" ref={profileRef}>
+                <Button variant="ghost" className="flex items-center space-x-2" onClick={() => setProfileMenuOpen((v) => !v)}>
+                  <UserIcon className="w-5 h-5" />
+                  <span className="hidden md:inline text-sm font-medium">{user.email}</span>
+                </Button>
+                {profileMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded shadow-lg z-10">
+                    <Link href="/dashboard" className="block px-4 py-2 text-gray-700 hover:bg-gray-100">Dashboard</Link>
+                    <button
+                      className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
+                      onClick={async () => { await supabase.auth.signOut(); setUser(null); setProfileMenuOpen(false); }}
+                    >Sign Out</button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
                 <Button variant="ghost" asChild>
                   <Link href="/auth/signin">Sign In</Link>
                 </Button>
-                <Button asChild className="bg-gradient-to-r from-purple-600 to-blue-600">
+                <Button asChild className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
                   <Link href="/auth/signup">
                     <Zap className="w-4 h-4 mr-2" />
                     Get Started
                   </Link>
                 </Button>
+              </>
+            )}
+          </div>
+
+          {/* Mobile menu button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={() => setMobileMenuOpen((v) => !v)}
+            aria-label="Toggle menu"
+          >
+            {mobileMenuOpen ? (
+              <X className="w-5 h-5" />
+            ) : (
+              <Menu className="w-5 h-5" />
+            )}
+          </Button>
+        </div>
+
+        {/* Mobile Navigation Overlay */}
+        {mobileMenuOpen && (
+          <>
+            <div className="fixed inset-0 bg-black bg-opacity-30 z-40" onClick={() => setMobileMenuOpen(false)} />
+            <div className="md:hidden fixed top-16 left-0 w-full bg-white border-t border-gray-200 z-50 shadow-lg animate-fade-in">
+              <div className="flex flex-col space-y-4 p-6">
+                {navigation.map((item) => (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={`text-sm font-medium transition-colors hover:text-purple-600 ${
+                      pathname === item.href
+                        ? 'text-purple-600'
+                        : 'text-gray-600'
+                    }`}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    {item.name}
+                  </Link>
+                ))}
+                <div className="flex flex-col space-y-2 pt-4 border-t border-gray-200">
+                  {user ? (
+                    <>
+                      <Link href="/dashboard" className="block px-4 py-2 text-gray-700 hover:bg-gray-100">Dashboard</Link>
+                      <button
+                        className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
+                        onClick={async () => { await supabase.auth.signOut(); setUser(null); setMobileMenuOpen(false); }}
+                      >Sign Out</button>
+                    </>
+                  ) : (
+                    <>
+                      <Button variant="ghost" asChild>
+                        <Link href="/auth/signin">Sign In</Link>
+                      </Button>
+                      <Button asChild className="bg-gradient-to-r from-purple-600 to-blue-600">
+                        <Link href="/auth/signup">
+                          <Zap className="w-4 h-4 mr-2" />
+                          Get Started
+                        </Link>
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          </>
         )}
       </div>
     </nav>
