@@ -18,7 +18,8 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 
-const BACKEND_API_URL = process.env.NEXT_PUBLIC_BACKEND_URL + '/templates'
+const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+const TEMPLATES_API = BACKEND_BASE_URL + '/api/templates';
 
 interface Template {
   id: string;
@@ -37,7 +38,7 @@ export default function TemplatesPage() {
 
   useEffect(() => {
     async function fetchTemplates() {
-      const res = await fetch(BACKEND_API_URL)
+      const res = await fetch(TEMPLATES_API)
       const data = await res.json()
       setTemplates(data)
     }
