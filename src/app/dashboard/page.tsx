@@ -15,6 +15,7 @@ import {
   Settings
 } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 // Mock data for demonstration
 const agents = [
@@ -79,6 +80,7 @@ const stats = [
 ]
 
 export default function DashboardPage() {
+  const router = useRouter()
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -217,9 +219,11 @@ export default function DashboardPage() {
                   <Settings className="w-4 h-4 mr-2" />
                   API Settings
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <TrendingUp className="w-4 h-4 mr-2" />
-                  View Analytics
+                <Button variant="outline" className="w-full justify-start" asChild>
+                  <Link href="/analytics">
+                    <TrendingUp className="w-4 h-4 mr-2" />
+                    View Analytics
+                  </Link>
                 </Button>
               </CardContent>
             </Card>

@@ -14,11 +14,10 @@ Transform any API into conversational AI agents with our revolutionary no-code p
 ## 🛠 Tech Stack
 
 - **Frontend**: Next.js 14 with TypeScript
-- **Backend**: Node.js with Express
-- **Database**: Supabase (real-time capabilities)
-- **Authentication**: NextAuth.js
+- **Backend**: Node.js with Express (handles all API/database/auth calls)
+- **Database and Authentication**: Supabase (used only in backend)
 - **UI**: Tailwind CSS + shadcn/ui components
-- **AI**: OpenAI GPT-4 / Anthropic Claude
+- **AI**: Meta LLama-4
 - **Deployment**: Vercel
 
 ## 🏗 Project Structure
@@ -35,8 +34,9 @@ src/
 │   ├── ui/                # shadcn/ui components
 │   └── layout/            # Layout components
 └── lib/
-    ├── supabase.ts        # Supabase client
     └── utils.ts           # Utility functions
+backend/
+  └── index.js            # Express backend (handles all Supabase/database/auth logic)
 ```
 
 ## 🚀 Getting Started
@@ -53,32 +53,34 @@ src/
    ```
 
 3. **Set up environment variables**
-   ```bash
-   cp .env.local.example .env.local
-   ```
-   
-   Fill in your Supabase credentials and other API keys.
+   - For the frontend: `.env.local` (set `NEXT_PUBLIC_BACKEND_URL`)
+   - For the backend: `backend/.env` (set `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`)
 
 4. **Set up Supabase**
    - Create a new Supabase project
    - Run the database migrations (coming soon)
    - Update your environment variables
 
-5. **Start the development server**
+5. **Start the backend server**
+   ```bash
+   npm run backend:dev
+   ```
+
+6. **Start the frontend development server**
    ```bash
    npm run dev
    ```
 
-6. **Open your browser**
+7. **Open your browser**
    Navigate to `http://localhost:3000`
 
 ## 📊 Database Schema
 
-The application uses Supabase with the following main tables:
+The application uses Supabase (via the backend) with the following main tables:
 
 - `agents`: Store agent configurations and metadata
 - `agent_analytics`: Track usage metrics and performance
-- `users`: User authentication and profiles (handled by Supabase Auth)
+- `users`: User authentication and profiles (handled by Supabase Auth in backend)
 
 ## 🎯 Key Pages
 
@@ -86,7 +88,7 @@ The application uses Supabase with the following main tables:
 - **Dashboard** (`/dashboard`): Manage and monitor your agents
 - **Builder** (`/builder`): Create and configure new agents
 - **Playground** (`/playground`): Test agents in real-time
-- **Authentication** (`/auth/*`): Sign in/up flows
+- **Authentication** (`/auth/*`): Sign in/up flows (handled via backend API)
 
 ## 🎨 Design System
 
@@ -104,6 +106,7 @@ The application uses Supabase with the following main tables:
 - `npm run build`: Build for production
 - `npm run start`: Start production server
 - `npm run lint`: Run ESLint
+- `npm run backend:dev`: Start backend server
 
 ### Code Style
 
@@ -117,7 +120,7 @@ The application uses Supabase with the following main tables:
 The application is optimized for Vercel deployment:
 
 1. Connect your GitHub repository to Vercel
-2. Set up environment variables in Vercel dashboard
+2. Set up environment variables in Vercel dashboard (for both frontend and backend)
 3. Deploy automatically on push to main branch
 
 ## 🏆 Hackathon Features
