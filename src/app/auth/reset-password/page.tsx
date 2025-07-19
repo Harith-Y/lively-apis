@@ -30,8 +30,14 @@ function ResetPasswordForm() {
       body: JSON.stringify({ token, password })
     })
     const data = await res.json()
-    if (res.ok) setSuccess(true)
-    else setError(data.error || 'Failed to reset password')
+    if (res.ok) {
+      // If backend returns a new access token, store it in localStorage
+      if (data.session && data.session.access_token) {
+        localStorage.setItem('sb-access-token', data.session.access_token);
+        window.dispatchEvent(new Event('auth-changed'));
+      }
+      setSuccess(true);
+    } else setError(data.error || 'Failed to reset password')
   }
 
   return (
