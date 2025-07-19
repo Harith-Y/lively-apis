@@ -4,6 +4,7 @@ import "./globals.css";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { cookies } from 'next/headers';
+import { ToastProvider } from '@/components/ui/toast-provider'
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -28,13 +29,15 @@ export default async function RootLayout({
     <html lang="en" className={theme} data-scroll-behavior="smooth">
       <head />
       <body className={inter.className} suppressHydrationWarning={true}>
-        <div className="min-h-screen flex flex-col">
-          <Navbar />
-          <main className="flex-1">
-            {children}
-          </main>
-          <Footer />
-        </div>
+        <ToastProvider>
+          <div className="min-h-screen flex flex-col">
+            <Navbar />
+            <main className="flex-1">
+              {children}
+            </main>
+            <Footer />
+          </div>
+        </ToastProvider>
       </body>
     </html>
   );

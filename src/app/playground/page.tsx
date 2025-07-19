@@ -27,6 +27,7 @@ import {
 } from 'lucide-react'
 import { LocalTime } from '@/components/ui/LocalTime';
 import { useRouter } from 'next/navigation'
+import toast from 'react-hot-toast'
 
 interface Message {
   id: string
@@ -175,7 +176,7 @@ export default function PlaygroundPage() {
       const plan: AgentPlan = await planner.planAgent(goal)
       setAgentPlan(plan)
     } catch (error) {
-      console.error('Failed to initialize demo agent:', error)
+      toast.error('Failed to initialize demo agent: ' + (error instanceof Error ? error.message : String(error)))
     }
   }, [selectedAgent])
 
@@ -234,7 +235,7 @@ export default function PlaygroundPage() {
         setMessages(prev => [...prev, agentResponse])
       }
     } catch (error) {
-      console.error('Failed to get agent response:', error)
+      toast.error('Failed to get agent response: ' + (error instanceof Error ? error.message : String(error)))
     } finally {
       setIsLoading(false)
     }
@@ -276,7 +277,7 @@ export default function PlaygroundPage() {
   // Voice input (speech-to-text)
   const handleStartRecording = () => {
     if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-      alert('Speech recognition not supported in this browser.')
+      toast.error('Speech recognition not supported in this browser.')
       return
     }
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
@@ -317,10 +318,10 @@ export default function PlaygroundPage() {
         audioRef.current = new Audio(data.audio_url)
         audioRef.current.play()
       } else {
-        alert('TTS failed')
+        toast.error('TTS failed')
       }
     } catch {
-      alert('TTS failed')
+      toast.error('TTS failed')
     } finally {
       setTtsLoadingId(null)
     }
@@ -337,10 +338,10 @@ export default function PlaygroundPage() {
         localStorage.setItem('refine-agent', JSON.stringify(data))
         router.push('/builder?refine=1')
       } else {
-        alert('Failed to load agent for refinement')
+        toast.error('Failed to load agent for refinement')
       }
     } catch {
-      alert('Failed to load agent for refinement')
+      toast.error('Failed to load agent for refinement')
     }
   }
 

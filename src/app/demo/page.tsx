@@ -36,9 +36,6 @@ export default function DemoPage() {
   const liveDemoInterval = useRef<NodeJS.Timeout | null>(null)
   const [liveDemoIndex, setLiveDemoIndex] = useState(0)
 
-  // Debug: Log state on every render
-  console.log('RENDER: isPlaying:', isPlaying, 'currentStep:', currentStep, 'activeTab:', activeTab, 'walkthroughStep:', walkthroughStep, 'isWalkthroughActive:', isWalkthroughActive)
-
   // Simulate real-time metrics updates
   useEffect(() => {
     const interval = setInterval(() => {
@@ -56,7 +53,7 @@ export default function DemoPage() {
   const scenario = customerServiceScenario
   // Debug: Log timeline on mount
   useEffect(() => {
-    console.log('TIMELINE:', scenario.timeline)
+    // console.log('TIMELINE:', scenario.timeline)
   }, [])
   const beforeAfterSavings = scenario.beforeMetrics.monthlyCost - scenario.afterMetrics.monthlyCost
   const roiPercentage = Math.round((beforeAfterSavings / scenario.afterMetrics.monthlyCost) * 100)

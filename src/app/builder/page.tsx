@@ -291,7 +291,7 @@ export default function BuilderPage() {
       const analyzed = await apiAnalyzer.analyzeAPI(input)
       setParsedAPI(analyzed)
     } catch (error) {
-      console.error('Failed to analyze API:', error)
+      // console.error('Failed to analyze API:', error)
     } finally {
       setIsAnalyzing(false)
     }
@@ -306,7 +306,7 @@ export default function BuilderPage() {
       const plan = await planner.planAgent(naturalLanguagePrompt)
       setAgentPlan(plan)
     } catch (error) {
-      console.error('Failed to generate agent:', error)
+      // console.error('Failed to generate agent:', error)
     } finally {
       setIsGenerating(false)
     }
@@ -317,10 +317,10 @@ export default function BuilderPage() {
     
     try {
       const execution = await aiIntegration.testAgent(agentPlan, "Hello, can you help me?")
-      console.log('Test execution:', execution)
+      // console.log('Test execution:', execution)
       // You could show this in a modal or redirect to playground
     } catch (error) {
-      console.error('Failed to test agent:', error)
+      // console.error('Failed to test agent:', error)
     }
   }
 

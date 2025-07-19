@@ -73,7 +73,7 @@ const functionRegistry: Record<string, (args: Record<string, unknown>, context: 
   async sendEmail(args, context, api, credentials) {
     // args should include { to, subject, body }
     // For demo: just log and return
-    console.log('Sending email:', args);
+    // Optionally log for debugging: Sending email
     return { status: 'sent', ...args };
   }
 };
