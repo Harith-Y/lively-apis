@@ -6,7 +6,7 @@ export interface AgentStep {
   title: string
   description: string
   endpoint?: APIEndpoint
-  parameters?: Record<string, any>
+  parameters?: Record<string, string | number | boolean>
   condition?: string
   responseTemplate?: string
   nextSteps?: string[]
@@ -25,7 +25,19 @@ export interface AgentWorkflow {
 export interface AgentPlan {
   workflow: AgentWorkflow
   systemPrompt: string
-  functionDefinitions: any[]
+  functionDefinitions: {
+    name: string
+    description: string
+    parameters: {
+      type: 'object'
+      properties: Record<string, {
+        type: string
+        description: string
+        example?: string
+      }>
+      required: string[]
+    }
+  }[]
   conversationFlow: ConversationNode[]
 }
 
@@ -47,10 +59,9 @@ export class AgentPlanner {
 
   async planAgent(userGoal: string): Promise<AgentPlan> {
     // Analyze the user's goal and map to API capabilities
-    const relevantEndpoints = this.findRelevantEndpoints(userGoal)
-    const workflow = this.createWorkflow(userGoal, relevantEndpoints)
+    const workflow = this.createWorkflow(userGoal)
     const systemPrompt = this.generateSystemPrompt(workflow)
-    const functionDefinitions = this.generateFunctionDefinitions(relevantEndpoints)
+    const functionDefinitions = this.generateFunctionDefinitions()
     const conversationFlow = this.generateConversationFlow(workflow)
 
     return {
@@ -63,9 +74,6 @@ export class AgentPlanner {
 
   private findRelevantEndpoints(goal: string): APIEndpoint[] {
     const goalLower = goal.toLowerCase()
-    const relevantEndpoints: APIEndpoint[] = []
-
-    // Score endpoints based on relevance to the goal
     const scoredEndpoints = this.api.endpoints.map(endpoint => {
       let score = 0
       
@@ -115,7 +123,7 @@ export class AgentPlanner {
       .map(item => item.endpoint)
   }
 
-  private createWorkflow(goal: string, endpoints: APIEndpoint[]): AgentWorkflow {
+  private createWorkflow(goal: string): AgentWorkflow {
     const steps: AgentStep[] = []
     
     // Add greeting step
@@ -138,7 +146,7 @@ export class AgentPlanner {
     })
 
     // Add processing steps for each relevant endpoint
-    endpoints.forEach((endpoint, index) => {
+    this.findRelevantEndpoints(goal).forEach((endpoint, index) => {
       const stepId = `api_call_${index}`
       steps.push({
         id: stepId,
@@ -167,7 +175,7 @@ export class AgentPlanner {
       goal,
       steps,
       triggers: this.generateTriggers(goal),
-      responses: this.generateResponses(goal, endpoints)
+      responses: this.generateResponses(goal)
     }
   }
 
@@ -197,9 +205,29 @@ RESPONSE STYLE:
 Remember: You can only perform actions related to ${this.api.name}. If users ask about other services, politely redirect them to ${this.api.name}-related tasks.`
   }
 
-  private generateFunctionDefinitions(endpoints: APIEndpoint[]): any[] {
-    return endpoints.map(endpoint => {
-      const parameters: any = {
+  private generateFunctionDefinitions(): {
+    name: string
+    description: string
+    parameters: {
+      type: 'object'
+      properties: Record<string, {
+        type: string
+        description: string
+        example?: string
+      }>
+      required: string[]
+    }
+  }[] {
+    return this.findRelevantEndpoints('').map(endpoint => {
+      const parameters: {
+        type: 'object'
+        properties: Record<string, {
+          type: string
+          description: string
+          example?: string
+        }>
+        required: string[]
+      } = {
         type: 'object',
         properties: {},
         required: []
@@ -212,7 +240,7 @@ Remember: You can only perform actions related to ${this.api.name}. If users ask
         }
         
         if (param.example) {
-          parameters.properties[param.name].example = param.example
+          parameters.properties[param.name].example = param.example.toString();
         }
 
         if (param.required) {
@@ -320,8 +348,8 @@ Remember: You can only perform actions related to ${this.api.name}. If users ask
     return `Hello! I'm your ${this.api.name} assistant. I can help you ${goal}. What would you like me to help you with today?`
   }
 
-  private generateParameterMapping(endpoint: APIEndpoint): Record<string, any> {
-    const mapping: Record<string, any> = {}
+  private generateParameterMapping(endpoint: APIEndpoint): Record<string, string | number | boolean> {
+    const mapping: Record<string, string | number | boolean> = {}
     
     endpoint.parameters.forEach(param => {
       if (param.example) {
@@ -349,8 +377,6 @@ Remember: You can only perform actions related to ${this.api.name}. If users ask
   }
 
   private generateResponseTemplate(endpoint: APIEndpoint): string {
-    const successResponse = endpoint.responses.find(r => r.statusCode === 200)
-    
     if (endpoint.method === 'GET') {
       return `I found the ${endpoint.summary.toLowerCase()} information. Here's what I retrieved: {response_data}`
     } else if (endpoint.method === 'POST') {
@@ -364,10 +390,10 @@ Remember: You can only perform actions related to ${this.api.name}. If users ask
     return `Operation completed successfully. Result: {response_data}`
   }
 
-  private generateResponses(goal: string, endpoints: APIEndpoint[]): Record<string, string> {
+  private generateResponses(goal: string): Record<string, string> {
     return {
       greeting: `Hello! I'm your ${this.api.name} assistant. I can help you ${goal}.`,
-      help: `I can help you with: ${endpoints.map(e => e.summary.toLowerCase()).join(', ')}.`,
+      help: `I can help you with: ${this.api.capabilities.map(cap => cap.toLowerCase()).join(', ')}.`,
       error: `I encountered an error while processing your request. Please try again or rephrase your question.`,
       success: `Great! I've successfully completed your request.`,
       clarification: `I need a bit more information to help you. Could you please provide more details?`

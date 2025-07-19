@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,7 +27,6 @@ interface WorkflowBuilderProps {
 
 export function WorkflowBuilder({ workflow, onWorkflowChange, onTest }: WorkflowBuilderProps) {
   const [selectedStep, setSelectedStep] = useState<string | null>(null)
-  const [draggedStep, setDraggedStep] = useState<string | null>(null)
 
   const defaultWorkflow: AgentWorkflow = {
     id: 'new_workflow',
@@ -197,9 +196,6 @@ export function WorkflowBuilder({ workflow, onWorkflowChange, onTest }: Workflow
                           : 'border-gray-200 hover:border-gray-300'
                       } ${getStepColor(step.type)}`}
                       onClick={() => setSelectedStep(step.id)}
-                      draggable
-                      onDragStart={() => setDraggedStep(step.id)}
-                      onDragEnd={() => setDraggedStep(null)}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
@@ -465,7 +461,7 @@ function StepEditor({ step, onUpdate }: StepEditorProps) {
               <select
                 value={step.endpoint?.method || 'GET'}
                 onChange={(e) => onUpdate({ 
-                  endpoint: { ...step.endpoint!, method: e.target.value as any }
+                  endpoint: { ...step.endpoint!, method: e.target.value as 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' }
                 })}
                 className="w-full p-2 border border-gray-300 rounded-md"
               >
