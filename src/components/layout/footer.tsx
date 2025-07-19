@@ -21,7 +21,7 @@ export function Footer() {
               <a href="#" className="text-gray-400 hover:text-purple-600 transition-colors">
                 <Twitter className="w-5 h-5" />
               </a>
-              <a href="#" className="text-gray-400 hover:text-purple-600 transition-colors">
+              <a href="https://github.com/varshini-1396/lively-apis" className="text-gray-400 hover:text-purple-600 transition-colors">
                 <Github className="w-5 h-5" />
               </a>
               <a href="#" className="text-gray-400 hover:text-purple-600 transition-colors">
