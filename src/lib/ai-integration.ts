@@ -24,6 +24,49 @@ export interface AgentExecution {
   error?: string
 }
 
+// Function registry for dynamic agent execution
+const functionRegistry: Record<string, (args: Record<string, unknown>, context: Record<string, unknown>, api: ParsedAPI, credentials: Record<string, string>) => Promise<unknown>> = {
+  // Example Shopify inventory function
+  async getLowestStockItems(args, context, api, credentials) {
+    // This function should call the Shopify inventory endpoint (replace with real logic)
+    // For demo: call the first GET endpoint found
+    const endpoint = api.endpoints.find(e => e.summary.toLowerCase().includes('inventory') && e.method === 'GET') || api.endpoints[0];
+    if (!endpoint) throw new Error('No inventory endpoint found');
+    const ai = new AIIntegration();
+    const fakeCall = { name: 'getLowestStockItems', parameters: args };
+    const result = await ai.executeFunctionCall(fakeCall, api, credentials);
+    // Optionally process/sort/filter result here
+    return result.result;
+  },
+  // Example email function (replace with real email integration)
+  async sendEmail(args, context, api, credentials) {
+    // args should include { to, subject, body }
+    // For demo: just log and return
+    console.log('Sending email:', args);
+    return { status: 'sent', ...args };
+  }
+};
+
+// Generic dynamic agent plan executor
+export async function executeAgentFunctionCalls(functionCalls: FunctionCall[], api: ParsedAPI, credentials: Record<string, string>) {
+  let context: Record<string, unknown> = {};
+  let results: FunctionCall[] = [];
+  for (const call of functionCalls) {
+    if (functionRegistry[call.name]) {
+      try {
+        const result = await functionRegistry[call.name](call.parameters, context, api, credentials);
+        results.push({ ...call, result });
+        context[call.name] = result;
+      } catch (error) {
+        results.push({ ...call, error: error instanceof Error ? error.message : String(error) });
+      }
+    } else {
+      results.push({ ...call, error: `Unknown function: ${call.name}` });
+    }
+  }
+  return results;
+}
+
 export class AIIntegration {
   private apiKey: string
   private provider: 'openai' | 'claude' | 'openrouter'
@@ -212,7 +255,7 @@ export class AIIntegration {
     }
   }
 
-  private async executeFunctionCall(
+  public async executeFunctionCall(
     functionCall: FunctionCall,
     api: ParsedAPI,
     credentials: Record<string, string>

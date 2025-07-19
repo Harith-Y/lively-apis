@@ -1,6 +1,6 @@
-import { APIAnalyzer } from '@/lib/api-analyzer';
-import { AgentPlanner } from '@/lib/agent-planner';
-import { AIIntegration } from '@/lib/ai-integration';
+import { APIAnalyzer } from '../../lib/api-analyzer';
+import { AgentPlanner } from '../../lib/agent-planner';
+import { AIIntegration } from '../../lib/ai-integration';
 
 async function testAgentBuilder() {
   // User's natural language request

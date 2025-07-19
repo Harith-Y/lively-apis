@@ -23,5 +23,16 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules"],
+  "module": "commonjs",
+  "target": "es2018",
+  "moduleResolution": "node",
+  "esModuleInterop": true,
+  "allowSyntheticDefaultImports": true,
+  "resolveJsonModule": true,
+  "skipLibCheck": true,
+  "ts-node": {
+    "transpileOnly": true,
+    "files": true
+  }
 }
