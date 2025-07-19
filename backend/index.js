@@ -106,17 +106,17 @@ app.post('/auth/reset-password', async (req, res) => {
 // Playground agent response endpoint
 app.post('/playground/agent-response', async (req, res) => {
   const { agentId, agentPlan, message } = req.body;
-  // TODO: Integrate with your AI provider here
-  // For now, return a mock response
   if (!agentId || !agentPlan || !message) {
     return res.status(400).json({ agentResponse: 'Missing required fields.' });
   }
-  // Example: Call your AI provider here and get a response
-  // const aiResponse = await callAIProvider(agentPlan, message);
-  // return res.json({ agentResponse: aiResponse });
-
-  // Mock response for demonstration
-  return res.json({ agentResponse: `This is a mock AI response to: "${message}" for agent ${agentId}.` });
+  try {
+    const ai = new AIIntegration();
+    const agentResponse = await ai.executeAgent(agentPlan, message, agentPlan.api, agentPlan.apiCredentials);
+    return res.json({ agentResponse: agentResponse.agentResponse });
+  } catch (error) {
+    console.error('AI agent error:', error);
+    return res.status(500).json({ agentResponse: 'Error generating AI response.' });
+  }
 });
 
 // /auth/me endpoint for frontend auth state check
@@ -189,7 +189,7 @@ app.get('/api-docs', (req, res) => {
       {
         path: '/playground/agent-response',
         method: 'POST',
-        description: 'Get an AI agent response for a message',
+        description: 'Get a real AI agent response for a message using the provided agent plan and message.',
         request: { agentId: 'string', agentPlan: 'object', message: 'string' },
         response: { agentResponse: 'string' }
       }
