@@ -106,12 +106,12 @@ app.post('/auth/reset-password', async (req, res) => {
 
 // Playground agent response endpoint
 app.post('/playground/agent-response', async (req, res) => {
-  const { agentId, agentPlan, message } = req.body;
+  const { agentId, agentPlan, message, temperature, maxTokens } = req.body;
   if (!agentId || !agentPlan || !message) {
     return res.status(400).json({ agentResponse: 'Missing required fields.' });
   }
   try {
-    const ai = new AIIntegration('openrouter');
+    const ai = new AIIntegration('openrouter', undefined, temperature, maxTokens);
     const agentResponse = await ai.executeAgent(agentPlan, message, agentPlan.api, agentPlan.apiCredentials);
     return res.json({ agentResponse: agentResponse.agentResponse });
   } catch (error) {
