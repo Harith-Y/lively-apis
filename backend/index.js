@@ -3,6 +3,7 @@ const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config({ path: require('path').resolve(__dirname, '.env') });
 const { AIIntegration } = require('./ai-integration');
+const fetch = require('node-fetch');
 
 const app = express();
 
@@ -294,6 +295,14 @@ app.post('/agents', async (req, res) => {
   }
 });
 
+// Get agent by ID for refinement
+app.get('/agents/:id', async (req, res) => {
+  const { id } = req.params;
+  const { data, error } = await supabase.from('agents').select('*').eq('id', id).single();
+  if (error) return res.status(404).json({ error: error.message });
+  res.json(data);
+});
+
 // MCP Server Management endpoints
 app.get('/api/mcp-servers', async (req, res) => {
   let token = null;
@@ -378,6 +387,134 @@ app.get('/api/analytics', async (req, res) => {
     avgResponseTime,
     uptime: 99.9
   });
+});
+
+// Submit agent feedback
+app.post('/agent-feedback', async (req, res) => {
+  let token = null;
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+    token = req.headers.authorization.replace('Bearer ', '');
+  } else if (req.cookies && req.cookies['sb-access-token']) {
+    token = req.cookies['sb-access-token'];
+  }
+  if (!token) return res.status(401).json({ error: 'Not authenticated' });
+  const { data: userData, error: userError } = await supabase.auth.getUser(token);
+  if (userError || !userData || !userData.user) {
+    return res.status(401).json({ error: 'Invalid user' });
+  }
+  const user_id = userData.user.id;
+  const { agent_id, feedback, rating } = req.body;
+  if (!agent_id || !feedback) return res.status(400).json({ error: 'Missing agent_id or feedback' });
+  const { data, error } = await supabase
+    .from('agent_feedback')
+    .insert([{ agent_id, user_id, feedback, rating }])
+    .select('*')
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// Get feedback for an agent
+app.get('/agent-feedback/:agent_id', async (req, res) => {
+  const { agent_id } = req.params;
+  const { data, error } = await supabase
+    .from('agent_feedback')
+    .select('*')
+    .eq('agent_id', agent_id)
+    .order('created_at', { ascending: false });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// Get all versions of an agent (by name and user)
+app.get('/agents/:id/versions', async (req, res) => {
+  const { id } = req.params;
+  // Get the agent to find name and user_id
+  const { data: agent, error: agentError } = await supabase.from('agents').select('name,user_id').eq('id', id).single();
+  if (agentError || !agent) return res.status(404).json({ error: 'Agent not found' });
+  const { data, error } = await supabase
+    .from('agents')
+    .select('*')
+    .eq('user_id', agent.user_id)
+    .eq('name', agent.name)
+    .order('version', { ascending: false });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// Deploy agent to Vercel
+app.post('/deploy/vercel', async (req, res) => {
+  const { code, agentName } = req.body;
+  if (!code || !agentName) return res.status(400).json({ error: 'Missing code or agentName' });
+  const vercelToken = process.env.VERCEL_TOKEN;
+  if (!vercelToken) return res.status(500).json({ error: 'Vercel token not set in backend' });
+  const projectName = `agent-${agentName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+  const files = [
+    {
+      file: 'api/agent.js',
+      data: Buffer.from(code).toString('base64'),
+      encoding: 'base64'
+    },
+    {
+      file: 'package.json',
+      data: Buffer.from(JSON.stringify({
+        name: projectName,
+        version: '1.0.0',
+        main: 'api/agent.js',
+        dependencies: { axios: '^1.6.0' }
+      })).toString('base64'),
+      encoding: 'base64'
+    }
+  ];
+  try {
+    const response = await fetch('https://api.vercel.com/v13/deployments', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${vercelToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name: projectName,
+        files,
+        projectSettings: { framework: null },
+        builds: [{ src: 'api/agent.js', use: '@vercel/node' }]
+      })
+    });
+    const data = await response.json();
+    if (data.url) {
+      res.json({ url: `https://${data.url}` });
+    } else {
+      res.status(500).json({ error: data.error?.message || 'Vercel deployment failed', details: data });
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Vercel deployment error', details: err.message });
+  }
+});
+
+// Groq TTS proxy endpoint
+app.post('/tts/groq', async (req, res) => {
+  const { text, voice = 'alloy', model = 'tts-1' } = req.body;
+  const groqApiKey = process.env.GROQ_API_KEY;
+  if (!groqApiKey) return res.status(500).json({ error: 'Groq API key not set' });
+  if (!text) return res.status(400).json({ error: 'Missing text' });
+  try {
+    const groqRes = await fetch('https://api.groq.com/v1/tts', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${groqApiKey}`
+      },
+      body: JSON.stringify({ text, voice, model })
+    });
+    const data = await groqRes.json();
+    if (data && data.audio_url) {
+      res.json({ audio_url: data.audio_url });
+    } else {
+      res.status(500).json({ error: data.error || 'Groq TTS failed', details: data });
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Groq TTS error', details: err.message });
+  }
 });
 
 const PORT = process.env.PORT || 4000;

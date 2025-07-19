@@ -24,6 +24,7 @@ import {
   ArrowRight,
   CheckCircle
 } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 export default function BuilderPage() {
   const [agentName, setAgentName] = useState('')
@@ -92,6 +93,43 @@ export default function BuilderPage() {
   const [analytics, setAnalytics] = useState<any>(null)
   const [analyticsLoading, setAnalyticsLoading] = useState(false)
   const [analyticsError, setAnalyticsError] = useState<string | null>(null)
+
+  // Version History modal state
+  const [versionModalOpen, setVersionModalOpen] = useState(false)
+  const [versionList, setVersionList] = useState<any[]>([])
+  const [versionLoading, setVersionLoading] = useState(false)
+  const [versionError, setVersionError] = useState<string | null>(null)
+
+  // Vercel deployment state
+  const [vercelDeploying, setVercelDeploying] = useState(false)
+  const [vercelDeployUrl, setVercelDeployUrl] = useState<string | null>(null)
+  const [vercelDeployError, setVercelDeployError] = useState<string | null>(null)
+
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // Prefill builder for agent refinement
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (searchParams.get('refine') === '1') {
+      const raw = localStorage.getItem('refine-agent')
+      if (raw) {
+        try {
+          const agent = JSON.parse(raw)
+          setAgentName(agent.name || '')
+          setAgentDescription(agent.description || '')
+          setApiEndpoint(agent.api_endpoint || '')
+          setParsedAPI(agent.configuration?.parsedAPI || null)
+          setAgentPlan(agent.configuration || null)
+          // If version exists, increment for redeploy
+          if (agent.version) {
+            setAgentPlan((plan: any) => plan ? { ...plan, version: agent.version + 1 } : { version: agent.version + 1 })
+          }
+        } catch {}
+        localStorage.removeItem('refine-agent')
+      }
+    }
+  }, [searchParams])
 
   // Fetch MCP servers when Deploy tab is shown
   useEffect(() => {
@@ -173,6 +211,37 @@ export default function BuilderPage() {
         .finally(() => setAnalyticsLoading(false))
     }
   }, [enterpriseModalOpen])
+
+  // Fetch version history when modal opens
+  useEffect(() => {
+    if (!versionModalOpen || !agentName) return
+    setVersionLoading(true)
+    setVersionError(null)
+    setVersionList([])
+    // Find current agent id from agentPlan or parsedAPI if available
+    // Fallback: skip if not available
+    const agentId = (agentPlan as any)?.id || (parsedAPI as any)?.id || null
+    if (!agentId) {
+      setVersionError('No agent selected')
+      setVersionLoading(false)
+      return
+    }
+    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'}/agents/${agentId}/versions`)
+      .then(res => res.json())
+      .then(data => setVersionList(Array.isArray(data) ? data : []))
+      .catch(() => setVersionError('Failed to fetch version history'))
+      .finally(() => setVersionLoading(false))
+  }, [versionModalOpen, agentName, agentPlan, parsedAPI])
+
+  // Load a previous version into the builder
+  const handleLoadVersion = (version: any) => {
+    setAgentName(version.name || '')
+    setAgentDescription(version.description || '')
+    setApiEndpoint(version.api_endpoint || '')
+    setParsedAPI(version.configuration?.parsedAPI || null)
+    setAgentPlan(version.configuration || null)
+    setVersionModalOpen(false)
+  }
 
   const handleAddMcpServer = async () => {
     if (!newMcpName || !newMcpUrl) return
@@ -309,6 +378,36 @@ export default function BuilderPage() {
     }
   }
 
+  // Deploy to Vercel handler
+  const handleDeployToVercel = async () => {
+    setVercelDeploying(true)
+    setVercelDeployError(null)
+    setVercelDeployUrl(null)
+    try {
+      // Get generated code from backend
+      const codeRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'}/generate-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentPlan, agentName, apiEndpoint })
+      })
+      const codeData = await codeRes.json()
+      if (!codeData.code) throw new Error('Failed to generate code')
+      // Deploy to Vercel
+      const deployRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'}/deploy/vercel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: codeData.code, agentName })
+      })
+      const deployData = await deployRes.json()
+      if (deployData.url) setVercelDeployUrl(deployData.url)
+      else throw new Error(deployData.error || 'Vercel deployment failed')
+    } catch (err: any) {
+      setVercelDeployError(err.message || 'Deployment failed')
+    } finally {
+      setVercelDeploying(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -319,6 +418,9 @@ export default function BuilderPage() {
             <p className="text-gray-600">Create intelligent AI agents from your APIs</p>
           </div>
           <div className="flex space-x-3">
+            <Button variant="outline" onClick={() => setVersionModalOpen(true)}>
+              Version History
+            </Button>
             <Button variant="outline" onClick={() => setEnterpriseModalOpen(true)}>
               Enterprise Settings
             </Button>
@@ -822,6 +924,22 @@ export default function BuilderPage() {
                         Deploy Agent
                         <ArrowRight className="w-4 h-4 ml-2" />
                       </Button>
+                      <Button
+                        className="w-full bg-gradient-to-r from-gray-800 to-gray-600 hover:from-gray-900 hover:to-gray-700"
+                        onClick={handleDeployToVercel}
+                        disabled={!agentPlan || vercelDeploying}
+                      >
+                        {vercelDeploying ? 'Deploying to Vercel...' : 'Deploy to Vercel'}
+                      </Button>
+                      {vercelDeployUrl && (
+                        <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                          <span className="font-semibold text-blue-700">Vercel Deployment URL:</span><br />
+                          <a href={vercelDeployUrl} target="_blank" rel="noopener noreferrer" className="text-blue-700 underline">{vercelDeployUrl}</a>
+                        </div>
+                      )}
+                      {vercelDeployError && (
+                        <div className="mt-2 text-xs text-red-600">{vercelDeployError}</div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -1105,7 +1223,7 @@ export default function BuilderPage() {
                           <div className="text-xs text-gray-600">{tpl.description}</div>
                           {tpl.configuration && tpl.configuration.workflow && tpl.configuration.workflow.steps && (
                             <ul className="list-disc ml-5 text-xs text-gray-700">
-                              {tpl.configuration.workflow.steps.map((step, i) => (
+                              {tpl.configuration.workflow.steps.map((step: any, i: number) => (
                                 <li key={i}>{step.name || step.type || `Step ${i+1}`}</li>
                               ))}
                             </ul>
@@ -1137,135 +1255,6 @@ export default function BuilderPage() {
               Import Selected
             </Button>
             <Button onClick={() => setComposeModalOpen(false)} className="w-full mt-2">Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={templateLibraryOpen} onOpenChange={setTemplateLibraryOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Template Library</DialogTitle>
-          </DialogHeader>
-          <div className="max-h-96 overflow-auto">
-            {libraryLoading ? (
-              <div>Loading templates...</div>
-            ) : libraryError ? (
-              <div className="text-red-400">{libraryError}</div>
-            ) : libraryTemplates.length === 0 ? (
-              <div>No templates found.</div>
-            ) : previewTemplate ? (
-              <div className="p-2">
-                <div className="font-bold text-lg mb-1">{previewTemplate.name || previewTemplate.title}</div>
-                <div className="text-gray-600 mb-2">{previewTemplate.description}</div>
-                {previewTemplate.configuration && previewTemplate.configuration.workflow && previewTemplate.configuration.workflow.steps && (
-                  <ul className="list-disc ml-5 text-xs text-gray-700 mb-2">
-                    {previewTemplate.configuration.workflow.steps.map((step: any, i: number) => (
-                      <li key={i}>{step.name || step.type || `Step ${i+1}`}</li>
-                    ))}
-                  </ul>
-                )}
-                <Button
-                  className="w-full mb-2"
-                  onClick={() => {
-                    setAgentPlan(previewTemplate.configuration)
-                    setAgentName(previewTemplate.name || previewTemplate.title || '')
-                    setAgentDescription(previewTemplate.description || '')
-                    setTemplateLibraryOpen(false)
-                    setPreviewTemplate(null)
-                  }}
-                >
-                  Import This Template
-                </Button>
-                <Button variant="outline" className="w-full" onClick={() => setPreviewTemplate(null)}>
-                  Back to Library
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {libraryTemplates.map((tpl) => (
-                  <div
-                    key={tpl.id}
-                    className="p-2 border rounded cursor-pointer hover:bg-blue-50"
-                    onClick={() => setPreviewTemplate(tpl)}
-                  >
-                    <div className="font-medium">{tpl.name || tpl.title}</div>
-                    <div className="text-xs text-gray-500">{tpl.description}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setTemplateLibraryOpen(false)} className="w-full mt-2">Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={enterpriseModalOpen} onOpenChange={setEnterpriseModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Enterprise Settings</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-8 max-h-96 overflow-auto">
-            {/* Analytics Section */}
-            <div>
-              <div className="font-semibold mb-2">Analytics</div>
-              {analyticsLoading ? (
-                <div>Loading analytics...</div>
-              ) : analyticsError ? (
-                <div className="text-red-400 text-xs">{analyticsError}</div>
-              ) : analytics ? (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-100 p-4 rounded">
-                    <div className="text-2xl font-bold">{analytics.agentInvocations}</div>
-                    <div className="text-xs text-gray-600">Agent Invocations</div>
-                  </div>
-                  <div className="bg-gray-100 p-4 rounded">
-                    <div className="text-2xl font-bold">{analytics.successRate.toFixed(2)}%</div>
-                    <div className="text-xs text-gray-600">Success Rate</div>
-                  </div>
-                  <div className="bg-gray-100 p-4 rounded">
-                    <div className="text-2xl font-bold">{analytics.avgResponseTime.toFixed(2)}s</div>
-                    <div className="text-xs text-gray-600">Avg. Response Time</div>
-                  </div>
-                  <div className="bg-gray-100 p-4 rounded">
-                    <div className="text-2xl font-bold">{analytics.uptime}%</div>
-                    <div className="text-xs text-gray-600">Uptime</div>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-            {/* Cloud Hosting Config Section */}
-            <div>
-              <div className="font-semibold mb-2">Cloud Hosting Configuration</div>
-              <div className="mb-2">
-                <label className="block text-xs font-medium text-gray-700 mb-1">Environment</label>
-                <select className="w-full p-2 border border-gray-300 rounded-md" value={cloudEnv} onChange={e => setCloudEnv(e.target.value)}>
-                  <option>Production</option>
-                  <option>Staging</option>
-                  <option>Development</option>
-                </select>
-              </div>
-              <div className="mb-2">
-                <label className="block text-xs font-medium text-gray-700 mb-1">Region</label>
-                <select className="w-full p-2 border border-gray-300 rounded-md" value={cloudRegion} onChange={e => setCloudRegion(e.target.value)}>
-                  <option value="us-east-1">US East (N. Virginia)</option>
-                  <option value="us-west-2">US West (Oregon)</option>
-                  <option value="eu-west-1">EU (Ireland)</option>
-                  <option value="ap-southeast-1">Asia Pacific (Singapore)</option>
-                </select>
-              </div>
-              <div className="mb-2">
-                <label className="block text-xs font-medium text-gray-700 mb-1">Cloud Provider</label>
-                <select className="w-full p-2 border border-gray-300 rounded-md" value={cloudProvider} onChange={e => setCloudProvider(e.target.value)}>
-                  <option>AWS</option>
-                  <option>Azure</option>
-                  <option>GCP</option>
-                  <option>DigitalOcean</option>
-                </select>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setEnterpriseModalOpen(false)} className="w-full mt-2">Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

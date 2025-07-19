@@ -4,7 +4,7 @@ import { demoAgents } from '@/lib/demo-data'
 const agents = demoAgents
 const defaultAgentId = agents[0]?.id || 'customer-support'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -26,6 +26,7 @@ import {
   Sparkles
 } from 'lucide-react'
 import { LocalTime } from '@/components/ui/LocalTime';
+import { useRouter } from 'next/navigation'
 
 interface Message {
   id: string
@@ -63,6 +64,23 @@ export default function PlaygroundPage() {
   const [maxTokens, setMaxTokens] = useState(1000)
   const [provider, setProvider] = useState<'openai' | 'claude' | 'openrouter'>('openrouter')
 
+  // Voice input state
+  const [isRecording, setIsRecording] = useState(false)
+  const recognitionRef = useRef<any>(null)
+
+  // TTS audio state
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [ttsLoadingId, setTtsLoadingId] = useState<string | null>(null)
+
+  // Feedback modal state
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [feedbackText, setFeedbackText] = useState('')
+  const [feedbackRating, setFeedbackRating] = useState(5)
+  const [feedbackLoading, setFeedbackLoading] = useState(false)
+  const [feedbackError, setFeedbackError] = useState<string | null>(null)
+  const [feedbackList, setFeedbackList] = useState<any[]>([])
+  const [feedbackListLoading, setFeedbackListLoading] = useState(false)
+
   // When agent changes, load or initialize chat for that agent
   useEffect(() => {
     if (!chats[selectedAgent]) {
@@ -87,6 +105,47 @@ export default function PlaygroundPage() {
   useEffect(() => {
     setChats(prev => ({ ...prev, [selectedAgent]: messages }))
   }, [messages, selectedAgent])
+
+  // Fetch feedback for selected agent
+  useEffect(() => {
+    if (!feedbackOpen) return
+    setFeedbackListLoading(true)
+    fetch(`${BACKEND_URL}/agent-feedback/${selectedAgent}`)
+      .then(res => res.json())
+      .then(data => setFeedbackList(Array.isArray(data) ? data : []))
+      .catch(() => setFeedbackList([]))
+      .finally(() => setFeedbackListLoading(false))
+  }, [feedbackOpen, selectedAgent])
+
+  // Submit feedback
+  const handleSubmitFeedback = async () => {
+    setFeedbackLoading(true)
+    setFeedbackError(null)
+    const token = typeof window !== 'undefined' ? localStorage.getItem('sb-access-token') : null
+    try {
+      const res = await fetch(`${BACKEND_URL}/agent-feedback`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ agent_id: selectedAgent, feedback: feedbackText, rating: feedbackRating })
+      })
+      const data = await res.json()
+      if (data && !data.error) {
+        setFeedbackText('')
+        setFeedbackRating(5)
+        setFeedbackList(prev => [data, ...prev])
+        setFeedbackOpen(false)
+      } else {
+        setFeedbackError(data.error || 'Failed to submit feedback')
+      }
+    } catch {
+      setFeedbackError('Failed to submit feedback')
+    } finally {
+      setFeedbackLoading(false)
+    }
+  }
 
   const initializeDemoAgent = useCallback(async () => {
     try {
@@ -214,6 +273,77 @@ export default function PlaygroundPage() {
     ])
   }
 
+  // Voice input (speech-to-text)
+  const handleStartRecording = () => {
+    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+      alert('Speech recognition not supported in this browser.')
+      return
+    }
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    const recognition = new SpeechRecognition()
+    recognition.lang = 'en-US'
+    recognition.interimResults = false
+    recognition.maxAlternatives = 1
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript
+      setInputMessage(transcript)
+      setIsRecording(false)
+    }
+    recognition.onerror = () => setIsRecording(false)
+    recognition.onend = () => setIsRecording(false)
+    recognitionRef.current = recognition
+    setIsRecording(true)
+    recognition.start()
+  }
+  const handleStopRecording = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop()
+      setIsRecording(false)
+    }
+  }
+
+  // TTS (Groq API via backend)
+  const handlePlayTTS = async (text: string, id: string) => {
+    setTtsLoadingId(id)
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'}/tts/groq`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, voice: 'alloy', model: 'tts-1' })
+      })
+      const data = await res.json()
+      if (data && data.audio_url) {
+        if (audioRef.current) audioRef.current.pause()
+        audioRef.current = new Audio(data.audio_url)
+        audioRef.current.play()
+      } else {
+        alert('TTS failed')
+      }
+    } catch {
+      alert('TTS failed')
+    } finally {
+      setTtsLoadingId(null)
+    }
+  }
+
+  const router = useRouter()
+  // Refine Agent logic
+  const handleRefineAgent = async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/agents/${selectedAgent}`)
+      const data = await res.json()
+      if (data && !data.error) {
+        // Pass agent config to /builder via query or state (here, use localStorage for simplicity)
+        localStorage.setItem('refine-agent', JSON.stringify(data))
+        router.push('/builder?refine=1')
+      } else {
+        alert('Failed to load agent for refinement')
+      }
+    } catch {
+      alert('Failed to load agent for refinement')
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -248,95 +378,56 @@ export default function PlaygroundPage() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Chat Interface */}
           <div className="lg:col-span-3">
-            <Card className="h-[600px] flex flex-col">
-              <CardHeader className="border-b">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
-                      <Bot className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">
-                        {agents.find(a => a.id === selectedAgent)?.name}
-                      </CardTitle>
-                      <CardDescription>
-                        {agents.find(a => a.id === selectedAgent)?.description}
-                      </CardDescription>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="text-sm text-gray-600">Active</span>
-                  </div>
-                </div>
-              </CardHeader>
-
-              {/* Messages */}
-              <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div
-                      className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                        message.type === 'user'
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-gray-100 text-gray-900'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-2 mb-1">
-                        {message.type === 'user' ? (
-                          <User className="w-4 h-4" />
-                        ) : (
-                          <Bot className="w-4 h-4" />
-                        )}
-                        <span className="text-xs opacity-75">
-                          <LocalTime date={message.timestamp} />
-                        </span>
-                      </div>
-                      <p className="text-sm">{message.content}</p>
+            <div className="bg-white rounded-lg shadow p-6 flex flex-col h-[70vh]">
+              <div className="flex-1 overflow-y-auto mb-4">
+                {messages.map((msg, idx) => (
+                  <div key={msg.id} className={`flex mb-3 ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[70%] px-4 py-2 rounded-lg ${msg.type === 'user' ? 'bg-purple-100 text-right' : 'bg-gray-100 text-left'} relative`}>
+                      {msg.type === 'agent' && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute left-[-36px] top-1"
+                          onClick={() => handlePlayTTS(msg.content, msg.id)}
+                          disabled={ttsLoadingId === msg.id}
+                          title="Play response"
+                        >
+                          {ttsLoadingId === msg.id ? <span className="animate-spin">🔊</span> : <span>🔊</span>}
+                        </Button>
+                      )}
+                      <div className="whitespace-pre-line">{msg.content}</div>
+                      <div className="text-xs text-gray-400 mt-1">{msg.type === 'user' ? 'You' : 'Agent'} • <LocalTime date={msg.timestamp} /></div>
                     </div>
                   </div>
                 ))}
-                {isLoading && (
-                  <div className="flex justify-start">
-                    <div className="bg-gray-100 text-gray-900 max-w-xs lg:max-w-md px-4 py-2 rounded-lg">
-                      <div className="flex items-center space-x-2">
-                        <Bot className="w-4 h-4" />
-                        <div className="flex space-x-1">
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-
-              {/* Input */}
-              <div className="border-t p-4">
-                <div className="flex space-x-2">
-                  <Input
-                    name="playground-message"
-                    autoComplete="off"
-                    placeholder="Type your message..."
-                    value={inputMessage}
-                    onChange={(e) => setInputMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                    disabled={isLoading}
-                  />
-                  <Button 
-                    onClick={handleSendMessage}
-                    disabled={isLoading || !inputMessage.trim()}
-                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                  >
-                    <Send className="w-4 h-4" />
-                  </Button>
-                </div>
               </div>
-            </Card>
+              <div className="flex items-center space-x-2 mt-auto">
+                <Input
+                  className="flex-1"
+                  placeholder={isRecording ? 'Listening...' : 'Type your message...'}
+                  value={inputMessage}
+                  onChange={e => setInputMessage(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && !isRecording && handleSendMessage()}
+                  disabled={isLoading || isRecording}
+                />
+                <Button
+                  variant={isRecording ? 'destructive' : 'outline'}
+                  onClick={isRecording ? handleStopRecording : handleStartRecording}
+                  disabled={isLoading}
+                  title={isRecording ? 'Stop Recording' : 'Voice Input'}
+                >
+                  {isRecording ? <span>⏹️</span> : <span>🎤</span>}
+                </Button>
+                <Button
+                  onClick={handleSendMessage}
+                  disabled={isLoading || isRecording || !inputMessage.trim()}
+                  className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                >
+                  <Send className="w-4 h-4 mr-1" />
+                  Send
+                </Button>
+              </div>
+            </div>
             {/* New row for performance/config/debug cards */}
             <div className="mt-8 flex flex-col md:flex-row gap-4">
               {/* Agent Performance */}
@@ -462,16 +553,19 @@ export default function PlaygroundPage() {
                     onClick={() => setSelectedAgent(agent.id)}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-medium text-gray-900">{agent.name}</span>
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        agent.status === 'active' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {agent.status}
-                      </span>
+                      <span className="font-medium">{agent.name}</span>
+                      {selectedAgent === agent.id && (
+                        <div className="flex space-x-2">
+                          <Button size="sm" variant="outline" onClick={handleRefineAgent}>
+                            Refine Agent
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => setFeedbackOpen(true)}>
+                            Leave Feedback
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                    <p className="text-xs text-gray-600 mt-1">{agent.description}</p>
+                    <div className="text-xs text-gray-500">{agent.description}</div>
                   </div>
                 ))}
               </CardContent>
@@ -537,6 +631,59 @@ export default function PlaygroundPage() {
           <DialogFooter>
             <Button onClick={() => setSettingsOpen(false)} className="w-full mt-4">Close</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={feedbackOpen} onOpenChange={setFeedbackOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Leave Feedback for Agent</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Your Feedback</label>
+              <textarea
+                className="w-full border border-gray-300 rounded p-2"
+                rows={3}
+                value={feedbackText}
+                onChange={e => setFeedbackText(e.target.value)}
+                disabled={feedbackLoading}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Rating</label>
+              <select
+                className="w-full border border-gray-300 rounded p-2"
+                value={feedbackRating}
+                onChange={e => setFeedbackRating(Number(e.target.value))}
+                disabled={feedbackLoading}
+              >
+                {[5,4,3,2,1].map(r => <option key={r} value={r}>{r} Star{r > 1 ? 's' : ''}</option>)}
+              </select>
+            </div>
+            {feedbackError && <div className="text-red-500 text-xs">{feedbackError}</div>}
+            <DialogFooter>
+              <Button onClick={handleSubmitFeedback} disabled={feedbackLoading || !feedbackText.trim()} className="w-full">
+                {feedbackLoading ? 'Submitting...' : 'Submit Feedback'}
+              </Button>
+            </DialogFooter>
+            <div className="mt-4">
+              <div className="font-semibold mb-2">Previous Feedback</div>
+              {feedbackListLoading ? (
+                <div>Loading...</div>
+              ) : feedbackList.length === 0 ? (
+                <div className="text-xs text-gray-500">No feedback yet.</div>
+              ) : (
+                <ul className="space-y-2 max-h-40 overflow-auto">
+                  {feedbackList.map(fb => (
+                    <li key={fb.id} className="border rounded p-2">
+                      <div className="text-xs text-gray-700 mb-1">{fb.feedback}</div>
+                      <div className="text-xs text-gray-500">Rating: {fb.rating || 'N/A'} • {new Date(fb.created_at).toLocaleString()}</div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
