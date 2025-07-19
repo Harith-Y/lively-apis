@@ -15,7 +15,7 @@ export type Database = {
           name: string
           description: string
           api_endpoint: string
-          configuration: any
+          configuration: unknown
           status: 'active' | 'inactive' | 'testing'
           created_at: string
           updated_at: string
@@ -26,7 +26,7 @@ export type Database = {
           name: string
           description?: string
           api_endpoint: string
-          configuration?: any
+          configuration?: unknown
           status?: 'active' | 'inactive' | 'testing'
           created_at?: string
           updated_at?: string
@@ -37,7 +37,7 @@ export type Database = {
           name?: string
           description?: string
           api_endpoint?: string
-          configuration?: any
+          configuration?: unknown
           status?: 'active' | 'inactive' | 'testing'
           created_at?: string
           updated_at?: string

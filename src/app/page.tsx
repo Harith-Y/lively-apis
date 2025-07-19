@@ -12,7 +12,6 @@ import {
   Code, 
   BarChart3, 
   ArrowRight,
-  CheckCircle,
   Sparkles
 } from 'lucide-react'
 import { motion } from 'framer-motion'

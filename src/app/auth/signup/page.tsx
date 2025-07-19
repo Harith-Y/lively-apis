@@ -65,7 +65,7 @@ export default function SignUpPage() {
               </div>
             </div>
             <p className="text-gray-700 italic">
-              "LivelyAPI transformed how we handle customer support. We built our first AI agent in under 30 minutes!"
+              &quot;LivelyAPI transformed how we handle customer support. We built our first AI agent in under 30 minutes!&quot;
             </p>
           </div>
         </div>

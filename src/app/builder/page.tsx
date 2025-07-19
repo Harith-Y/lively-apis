@@ -101,12 +101,12 @@ export default function BuilderPage() {
                       Natural Language Builder
                     </CardTitle>
                     <CardDescription>
-                      Describe your agent's behavior in plain English
+                      Describe your agent&apos;s behavior in plain English
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <Textarea
-                      placeholder="Describe what you want your agent to do. For example: 'When a user asks about their order status, look up their order using the order ID and return the current status, tracking number, and estimated delivery date...'"
+                      placeholder="Describe what you want your agent to do. For example: &apos;When a user asks about their order status, look up their order using the order ID and return the current status, tracking number, and estimated delivery date...&apos;"
                       value={naturalLanguagePrompt}
                       onChange={(e) => setNaturalLanguagePrompt(e.target.value)}
                       rows={6}
@@ -272,7 +272,7 @@ export default function BuilderPage() {
                           <div className="flex flex-wrap gap-2">
                             {intent.examples.map((example, i) => (
                               <span key={i} className="px-2 py-1 bg-gray-100 text-gray-700 text-sm rounded">
-                                "{example}"
+                                &quot;{example}&quot;
                               </span>
                             ))}
                           </div>
@@ -377,7 +377,7 @@ export default function BuilderPage() {
                   </div>
                   <div className="bg-white p-3 rounded-lg shadow-sm">
                     <p className="text-sm text-gray-700">
-                      Hi! I'm your AI assistant. How can I help you today?
+                      Hi! I&apos;m your AI assistant. How can I help you today?
                     </p>
                   </div>
                 </div>

@@ -9,11 +9,9 @@ import {
   Bot, 
   Send, 
   User, 
-  Play, 
   RotateCcw, 
   Settings,
   MessageSquare,
-  Code,
   BarChart3,
   Clock
 } from 'lucide-react'
@@ -268,7 +266,7 @@ export default function PlaygroundPage() {
                     className="w-full text-left justify-start text-xs"
                     onClick={() => setInputMessage(scenario)}
                   >
-                    "{scenario}"
+                    &quot;{scenario}&quot;
                   </Button>
                 ))}
               </CardContent>

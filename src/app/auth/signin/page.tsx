@@ -117,7 +117,7 @@ export default function SignInPage() {
 
             <div className="text-center">
               <span className="text-sm text-gray-600">
-                Don't have an account?{' '}
+                Don&apos;t have an account?{' '}
                 <Link href="/auth/signup" className="text-purple-600 hover:text-purple-700 font-medium">
                   Sign up
                 </Link>
