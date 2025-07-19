@@ -200,6 +200,21 @@ app.get('/api-docs', (req, res) => {
   })
 })
 
+// Add the /api/templates endpoint
+app.get('/api/templates', async (req, res) => {
+  console.log('Received request for /api/templates');
+  const { data, error } = await supabase
+    .from('templates')
+    .select('*')
+    .limit(20); // Add a limit for safety
+  if (error) {
+    console.error('Supabase error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+  console.log('Templates data:', data);
+  res.json(data);
+});
+
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Backend listening on port ${PORT}`);
