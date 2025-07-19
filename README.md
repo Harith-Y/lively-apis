@@ -1,36 +1,143 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LivelyAPI - AI Agent Platform
 
-## Getting Started
+Transform any API into conversational AI agents with our revolutionary no-code platform.
 
-First, run the development server:
+## 🚀 Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Natural Language Builder**: Describe your workflow in plain English
+- **Universal API Integration**: Connect to REST APIs, GraphQL, webhooks, and databases
+- **Real-time Testing**: Interactive playground for instant agent testing
+- **Enterprise Security**: Bank-grade security with SOC 2 compliance
+- **Advanced Analytics**: Monitor performance and optimize agents
+- **One-Click Deploy**: Deploy to production instantly
+
+## 🛠 Tech Stack
+
+- **Frontend**: Next.js 14 with TypeScript
+- **Backend**: Node.js with Express
+- **Database**: Supabase (real-time capabilities)
+- **Authentication**: NextAuth.js
+- **UI**: Tailwind CSS + shadcn/ui components
+- **AI**: OpenAI GPT-4 / Anthropic Claude
+- **Deployment**: Vercel
+
+## 🏗 Project Structure
+
+```
+src/
+├── app/                    # Next.js 14 App Router
+│   ├── page.tsx           # Landing page
+│   ├── dashboard/         # Agent management dashboard
+│   ├── builder/           # Agent builder interface
+│   ├── playground/        # Testing playground
+│   └── auth/              # Authentication pages
+├── components/
+│   ├── ui/                # shadcn/ui components
+│   └── layout/            # Layout components
+└── lib/
+    ├── supabase.ts        # Supabase client
+    └── utils.ts           # Utility functions
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🚀 Getting Started
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd livelyapi
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-## Learn More
+3. **Set up environment variables**
+   ```bash
+   cp .env.local.example .env.local
+   ```
+   
+   Fill in your Supabase credentials and other API keys.
 
-To learn more about Next.js, take a look at the following resources:
+4. **Set up Supabase**
+   - Create a new Supabase project
+   - Run the database migrations (coming soon)
+   - Update your environment variables
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+5. **Start the development server**
+   ```bash
+   npm run dev
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+6. **Open your browser**
+   Navigate to `http://localhost:3000`
 
-## Deploy on Vercel
+## 📊 Database Schema
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The application uses Supabase with the following main tables:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `agents`: Store agent configurations and metadata
+- `agent_analytics`: Track usage metrics and performance
+- `users`: User authentication and profiles (handled by Supabase Auth)
+
+## 🎯 Key Pages
+
+- **Landing Page** (`/`): Hero section with features and CTA
+- **Dashboard** (`/dashboard`): Manage and monitor your agents
+- **Builder** (`/builder`): Create and configure new agents
+- **Playground** (`/playground`): Test agents in real-time
+- **Authentication** (`/auth/*`): Sign in/up flows
+
+## 🎨 Design System
+
+- **Colors**: Purple/blue gradient theme
+- **Typography**: Inter font family
+- **Components**: shadcn/ui with custom styling
+- **Responsive**: Mobile-first approach
+- **Animations**: Framer Motion for smooth interactions
+
+## 🔧 Development
+
+### Available Scripts
+
+- `npm run dev`: Start development server
+- `npm run build`: Build for production
+- `npm run start`: Start production server
+- `npm run lint`: Run ESLint
+
+### Code Style
+
+- TypeScript for type safety
+- ESLint + Prettier for code formatting
+- Tailwind CSS for styling
+- Component-based architecture
+
+## 🚀 Deployment
+
+The application is optimized for Vercel deployment:
+
+1. Connect your GitHub repository to Vercel
+2. Set up environment variables in Vercel dashboard
+3. Deploy automatically on push to main branch
+
+## 🏆 Hackathon Features
+
+Built for **Suprathon 2025** with focus on:
+
+- ⚡ Rapid development (24-hour constraint)
+- 🎯 Clear user flow for judges
+- ✨ Visual impact and professional polish
+- 🔧 Working prototype over perfect code
+- 📈 Compelling business metrics integration
+
+## 📝 License
+
+This project is built for Suprathon 2025. All rights reserved.
+
+## 🤝 Contributing
+
+This is a hackathon project. For questions or suggestions, please reach out to the team.
+
+---
+
+**Built with ❤️ for Suprathon 2025**
