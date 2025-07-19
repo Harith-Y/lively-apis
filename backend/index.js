@@ -50,7 +50,14 @@ app.post('/auth/signup', async (req, res) => {
   if (error) {
     return res.status(400).json({ error: error.message });
   }
-  res.status(200).json({ user: data.user });
+  // Set cookie for cross-site if in production
+  if (data.session && data.session.access_token) {
+    const cookieOptions = process.env.NODE_ENV === 'production'
+      ? { path: '/', sameSite: 'none', secure: true }
+      : { path: '/' };
+    res.cookie('sb-access-token', data.session.access_token, cookieOptions);
+  }
+  res.status(200).json({ user: data.user, session: data.session });
 });
 
 // Signin endpoint
@@ -63,7 +70,40 @@ app.post('/auth/signin', async (req, res) => {
   if (error) {
     return res.status(401).json({ error: error.message });
   }
+  // Set cookie for cross-site if in production
+  const cookieOptions = process.env.NODE_ENV === 'production'
+    ? { path: '/', sameSite: 'none', secure: true }
+    : { path: '/' };
+  res.cookie('sb-access-token', data.session.access_token, cookieOptions);
   res.status(200).json({ user: data.user, session: data.session });
+});
+
+app.post('/auth/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required.' });
+  }
+  // Supabase will send a password reset email
+  const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: process.env.PASSWORD_RESET_REDIRECT_URL
+  });
+  if (error) {
+    return res.status(400).json({ error: error.message });
+  }
+  res.json({ success: true });
+});
+
+app.post('/auth/reset-password', async (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password) {
+    return res.status(400).json({ error: 'Missing token or password.' });
+  }
+  // Use Supabase to update the user's password
+  const { data, error } = await supabase.auth.updateUser({ password }, { accessToken: token });
+  if (error) {
+    return res.status(400).json({ error: error.message });
+  }
+  res.json({ success: true });
 });
 
 // Playground agent response endpoint
