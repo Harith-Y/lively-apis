@@ -107,6 +107,7 @@ export default function PlaygroundPage() {
   // When agent changes, load or initialize chat for that agent
   useEffect(() => {
     if (!chats[selectedAgent]) {
+      // Initialize chat for this agent
       const agent = agents.find(a => a.id === selectedAgent)
       const initialMessage: Message[] = [{
         id: '1',
@@ -122,7 +123,7 @@ export default function PlaygroundPage() {
     } else {
       setMessages(chats[selectedAgent])
     }
-  }, [selectedAgent, chats])
+  }, [selectedAgent])
 
   // When messages change, update chat history for the current agent
   useEffect(() => {
@@ -216,7 +217,12 @@ export default function PlaygroundPage() {
       timestamp: new Date()
     }
 
-    setMessages(prev => [...prev, userMessage])
+    const updatedMessages = [...messages, userMessage]
+    setMessages(updatedMessages)
+    setChats(prev => ({
+      ...prev,
+      [selectedAgent]: updatedMessages
+    }))
     setInputMessage('')
     setIsLoading(true)
 
@@ -243,7 +249,12 @@ export default function PlaygroundPage() {
           content: data.agentResponse || 'Sorry, I could not process your request.',
           timestamp: new Date()
         }
-        setMessages(prev => [...prev, agentResponse])
+        const updatedWithAgent = [...updatedMessages, agentResponse]
+        setMessages(updatedWithAgent)
+        setChats(prev => ({
+          ...prev,
+          [selectedAgent]: updatedWithAgent
+        }))
       } else {
         // Fallback to mock response
         const agentResponse: Message = {
@@ -252,7 +263,12 @@ export default function PlaygroundPage() {
           content: getDemoResponse(inputMessage),
           timestamp: new Date()
         }
-        setMessages(prev => [...prev, agentResponse])
+        const updatedWithAgent = [...updatedMessages, agentResponse]
+        setMessages(updatedWithAgent)
+        setChats(prev => ({
+          ...prev,
+          [selectedAgent]: updatedWithAgent
+        }))
       }
     } catch (error) {
       toast.error('Failed to get agent response: ' + (error instanceof Error ? error.message : String(error)))

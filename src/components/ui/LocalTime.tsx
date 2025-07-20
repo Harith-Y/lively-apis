@@ -1,12 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
+import React from "react";
 
 export function LocalTime({ date }: { date: Date }) {
-  const [time, setTime] = useState("");
-
-  useEffect(() => {
-    setTime(date.toLocaleTimeString());
-  }, [date]);
-
-  return <span className="text-xs opacity-75">{time}</span>;
+  return <span className="text-xs opacity-75">{date.toLocaleTimeString()}</span>;
 } 
