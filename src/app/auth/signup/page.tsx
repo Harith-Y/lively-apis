@@ -15,13 +15,20 @@ export default function SignUpPage() {
     password: '',
     confirmPassword: ''
   })
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setSuccess('')
+    if (!acceptedTerms) {
+      setError('You must accept the Terms of Service and Privacy Policy to sign up.')
+      return
+    }
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match')
       return
@@ -42,13 +49,13 @@ export default function SignUpPage() {
       setLoading(false)
       if (!res.ok) {
         setError(data.error || 'Sign up failed')
-      } else {
+      } else if (data.session && data.session.access_token) {
         // Store access token as cookie for session
-        if (data.session && data.session.access_token) {
-          localStorage.setItem('sb-access-token', data.session.access_token)
-          window.dispatchEvent(new Event('auth-changed'))
-        }
+        localStorage.setItem('sb-access-token', data.session.access_token)
+        window.dispatchEvent(new Event('auth-changed'))
         router.push('/dashboard')
+      } else {
+        setSuccess('Sign up successful! Please check your email to confirm your account before signing in.')
       }
     } catch {
       setError('Sign up failed')
@@ -192,6 +199,8 @@ export default function SignUpPage() {
                     name="terms"
                     type="checkbox"
                     className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                    checked={acceptedTerms}
+                    onChange={e => setAcceptedTerms(e.target.checked)}
                   />
                   <label htmlFor="terms" className="ml-2 block text-sm text-gray-700">
                     I agree to the{' '}
@@ -209,6 +218,7 @@ export default function SignUpPage() {
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
                 {error && <div className="text-red-600 text-sm mt-2">{error}</div>}
+                {success && <div className="text-green-600 text-sm mt-2">{success}</div>}
               </form>
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">

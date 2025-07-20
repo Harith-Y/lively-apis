@@ -50,16 +50,28 @@ app.post('/auth/signup', async (req, res) => {
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required.' });
   }
-  const { data, error } = await supabase.auth.admin.createUser({
+
+  // Use regular signup instead of admin.createUser
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    user_metadata: { name }
+    options: {
+      data: { name }, // user_metadata goes in options.data
+      ...(process.env.EMAIL_CONFIRM_REDIRECT_URL ? { 
+        emailRedirectTo: process.env.EMAIL_CONFIRM_REDIRECT_URL 
+      } : {})
+    }
   });
+
   if (error) {
     return res.status(400).json({ error: error.message });
   }
-  // No cookie logic; return token in response only
-  res.status(200).json({ user: data.user, session: data.session });
+
+  res.status(200).json({ 
+    user: data.user, 
+    session: data.session,
+    message: 'Please check your email for confirmation link'
+  });
 });
 
 // Signin endpoint
