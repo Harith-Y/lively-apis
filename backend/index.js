@@ -138,7 +138,7 @@ app.post('/api/plan-agent', async (req, res) => {
     console.log('Model:', useGroq ? 'meta-llama/llama-4-scout-17b-16e-instruct' : 'meta-llama/llama-3.2-3b-instruct:free');
     
     let llmRes;
-    const systemPrompt = `You are an expert AI agent designer. Given an API spec and a user goal, generate a JSON agent plan with a workflow of steps (including endpoint, method, input/output mapping, and natural language intent). Output only valid JSON.`;
+    const systemPrompt = `You are an expert AI agent designer. Given an API spec and a user goal, output ONLY valid JSON for an agent plan with a workflow of steps (including endpoint, method, input/output mapping, and natural language intent). Do not include any explanation, markdown, or code block. Output only valid JSON. If you cannot generate a workflow, return a workflow with a single step that explains why.`;
     const userPrompt = `API Spec (JSON):\n${JSON.stringify(parsedAPI, null, 2)}\n\nUser Goal: ${prompt}\n\nGenerate a JSON agent plan with a workflow of steps to accomplish the goal using the API. Output only valid JSON.`;
     
     if (useGroq) {
@@ -182,25 +182,79 @@ app.post('/api/plan-agent', async (req, res) => {
 
     let planText = llmRes.data.choices?.[0]?.message?.content || llmRes.data.choices?.[0]?.text || '';
     
+    console.log('LLM raw output:', planText);
+    
+    // Remove code block markers if present
+    planText = planText.replace(/^```[a-z]*\n?/i, '').replace(/```$/, '').trim();
+    
     // Try to parse JSON from the LLM output
     let plan;
     try {
       plan = JSON.parse(planText);
     } catch (e) {
-      // Try to extract JSON substring
-      const match = planText.match(/\{[\s\S]*\}/);
-      if (match) {
-        try { 
-          plan = JSON.parse(match[0]); 
-        } catch { 
-          plan = null; 
-        }
+      // Try to extract the largest JSON object in the string
+      const matches = planText.match(/\{[\s\S]*\}/g);
+      if (matches && matches.length > 0) {
+        try { plan = JSON.parse(matches[0]); } catch { plan = null; }
       }
     }
     
-    if (!plan) {
-      return res.status(500).json({ error: 'LLM did not return valid JSON', raw: planText });
+    // Normalize plan to always have workflow.steps
+    if (Array.isArray(plan?.workflow)) {
+      plan = { workflow: { steps: plan.workflow } };
     }
+    if (!plan || !plan.workflow || !Array.isArray(plan.workflow.steps)) {
+      console.error('LLM did not return a valid workflow array:', plan);
+      return res.status(500).json({ error: 'LLM did not return a valid workflow array', raw: plan });
+    }
+    
+    // After normalizing plan, add fallback to OpenRouter if Groq returns an empty workflow
+    if (Array.isArray(plan?.workflow) && plan.workflow.length === 0 && useGroq && useOpenRouter) {
+      console.log('Groq returned empty workflow, falling back to OpenRouter...');
+      try {
+        const openRouterRes = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
+          model: 'meta-llama/llama-3.2-3b-instruct:free',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+          temperature: 0.2,
+          max_tokens: 2048
+        }, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`
+          }
+        });
+        let planText = openRouterRes.data.choices?.[0]?.message?.content || openRouterRes.data.choices?.[0]?.text || '';
+        console.log('OpenRouter LLM raw output:', planText);
+        planText = planText.replace(/^```[a-z]*\n?/i, '').replace(/```$/, '').trim();
+        let fallbackPlan;
+        try {
+          fallbackPlan = JSON.parse(planText);
+        } catch (e) {
+          const matches = planText.match(/\{[\s\S]*\}/g);
+          if (matches && matches.length > 0) {
+            try { fallbackPlan = JSON.parse(matches[0]); } catch { fallbackPlan = null; }
+          }
+        }
+        if (Array.isArray(fallbackPlan?.workflow)) {
+          fallbackPlan = { workflow: { steps: fallbackPlan.workflow } };
+        }
+        if (fallbackPlan && fallbackPlan.workflow && Array.isArray(fallbackPlan.workflow.steps) && fallbackPlan.workflow.steps.length > 0) {
+          plan = fallbackPlan;
+          console.log('Using OpenRouter fallback for agent plan.');
+        } else {
+          console.error('OpenRouter fallback did not return a valid workflow array:', fallbackPlan);
+          return res.status(500).json({ error: 'LLM did not return a valid workflow array (Groq and OpenRouter)', raw: fallbackPlan });
+        }
+      } catch (fallbackErr) {
+        console.error('OpenRouter fallback error:', fallbackErr);
+        return res.status(500).json({ error: 'OpenRouter fallback failed', details: fallbackErr && fallbackErr.message ? fallbackErr.message : String(fallbackErr) });
+      }
+    }
+    // Log which provider was used for the final response
+    console.log('Final agent plan provider:', (useGroq && (!plan || plan.workflow.steps.length === 0)) ? 'openrouter' : useGroq ? 'groq' : useOpenRouter ? 'openrouter' : 'none');
     
     res.json(plan);
   } catch (err) {

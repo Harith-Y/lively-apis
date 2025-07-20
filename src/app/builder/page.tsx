@@ -317,11 +317,15 @@ export default function BuilderPage() {
         throw new Error(err.error || 'Failed to generate agent plan');
       }
       const plan = await res.json();
-      if (!plan || !plan.workflow || !plan.workflow.steps) {
-        toast.error("Failed to generate a valid agent workflow.");
+      let normalizedPlan = plan;
+      if (Array.isArray(plan?.workflow)) {
+        normalizedPlan = { workflow: { steps: plan.workflow } };
+      }
+      if (!normalizedPlan || !normalizedPlan.workflow || !Array.isArray(normalizedPlan.workflow.steps) || normalizedPlan.workflow.steps.length === 0) {
+        toast.error("Failed to generate a valid agent workflow. Try rephrasing your prompt or using a different API/model.");
         setAgentPlan(null);
       } else {
-        setAgentPlan(plan);
+        setAgentPlan(normalizedPlan);
         toast.success("Agent workflow generated!");
       }
     } catch (error) {
