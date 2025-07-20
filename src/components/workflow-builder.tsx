@@ -177,7 +177,7 @@ export function WorkflowBuilder({ workflow, onWorkflowChange, onTest }: Workflow
           </CardHeader>
           <CardContent className="p-6">
             <div className="space-y-4">
-              {currentWorkflow.steps.map((step, index) => {
+              {currentWorkflow.steps.map((step: AgentStep, index) => {
                 const StepIcon = getStepIcon(step.type)
                 const isSelected = selectedStep === step.id
                 
@@ -227,7 +227,6 @@ export function WorkflowBuilder({ workflow, onWorkflowChange, onTest }: Workflow
                           <strong>Response:</strong> {step.responseTemplate}
                         </div>
                       )}
-                      
                       {step.type === 'api_call' && step.endpoint && (
                         <div className="mt-3 p-2 bg-white/50 rounded text-xs">
                           <strong>API:</strong> {step.endpoint.method} {step.endpoint.path}
@@ -235,22 +234,16 @@ export function WorkflowBuilder({ workflow, onWorkflowChange, onTest }: Workflow
                       )}
 
                       {/* Render AI/LLM fields if present */}
-                      {(step.endpoint || step.method || step.input || step.output || step.intent) && (
+                      {(step.endpoint || step.responseTemplate) && (
                         <div className="mt-3 p-2 bg-white/50 rounded text-xs space-y-1">
                           {step.endpoint && (
-                            <div><strong>Endpoint:</strong> {typeof step.endpoint === 'string' ? step.endpoint : step.endpoint.path || step.endpoint.url || JSON.stringify(step.endpoint)}</div>
+                            <div><strong>Endpoint:</strong> {step.endpoint.path}</div>
                           )}
-                          {step.method && (
-                            <div><strong>Method:</strong> {step.method}</div>
+                          {step.endpoint?.method && (
+                            <div><strong>Method:</strong> {step.endpoint.method}</div>
                           )}
-                          {step.input && (
-                            <div><strong>Input:</strong> <pre className="inline whitespace-pre-wrap">{JSON.stringify(step.input, null, 2)}</pre></div>
-                          )}
-                          {step.output && (
-                            <div><strong>Output:</strong> <pre className="inline whitespace-pre-wrap">{JSON.stringify(step.output, null, 2)}</pre></div>
-                          )}
-                          {step.intent && (
-                            <div><strong>Intent:</strong> {step.intent}</div>
+                          {step.responseTemplate && (
+                            <div><strong>Response Template:</strong> {step.responseTemplate}</div>
                           )}
                         </div>
                       )}
@@ -354,7 +347,7 @@ export function WorkflowBuilder({ workflow, onWorkflowChange, onTest }: Workflow
               { type: 'api_call' as const, title: 'API Call', description: 'Call external API' },
               { type: 'condition' as const, title: 'Condition', description: 'Branch based on logic' },
               { type: 'input' as const, title: 'Input', description: 'Collect user input' }
-            ].map((stepType) => {
+            ].map((stepType: { type: AgentStep['type']; title: string; description: string }) => {
               const StepIcon = getStepIcon(stepType.type)
               return (
                 <div

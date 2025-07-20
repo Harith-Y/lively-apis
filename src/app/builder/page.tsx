@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { WorkflowBuilder } from '@/components/workflow-builder'
 import { APIAnalyzer, ParsedAPI } from '@/lib/api-analyzer'
-import { AgentPlanner, AgentPlan } from '@/lib/agent-planner'
+import { AgentPlanner, AgentPlan, AgentWorkflow } from '@/lib/agent-planner'
 import { AIIntegration } from '@/lib/ai-integration'
 import { 
   Bot, 
@@ -345,11 +345,8 @@ export default function BuilderPage() {
     }
   };
 
-  const handleTestAgent = async (workflowOverride?: any) => {
-    const planToTest = workflowOverride
-      ? { ...agentPlan, workflow: workflowOverride }
-      : agentPlan;
-    if (!planToTest) return;
+  const handleTestAgent = async () => {
+    if (!agentPlan) return;
     setTestLoading(true);
     setTestResult(null);
     setTestModalOpen(true);
@@ -359,7 +356,7 @@ export default function BuilderPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           agentId: agentName || 'test-agent',
-          agentPlan: planToTest,
+          agentPlan,
           message: testInput,
           temperature: 0.7,
           maxTokens: 1000,
@@ -481,7 +478,7 @@ export default function BuilderPage() {
             </Button>
             <Button 
               className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-              onClick={handleTestAgent}
+              onClick={() => handleTestAgent()}
               disabled={!agentPlan}
             >
               <Play className="w-4 h-4 mr-2" />
@@ -768,7 +765,6 @@ export default function BuilderPage() {
                         onWorkflowChange={(workflow) => {
                           setAgentPlan({ ...agentPlan, workflow })
                         }}
-                        onTest={(workflow) => handleTestAgent(workflow)}
                       />
                     </CardContent>
                   </Card>
@@ -1039,7 +1035,7 @@ export default function BuilderPage() {
                   Test in Playground
                 </Button>
                 {agentPlan && (
-                  <Button variant="outline" className="w-full justify-start" onClick={handleTestAgent}>
+                  <Button variant="outline" className="w-full justify-start" onClick={() => handleTestAgent()}>
                     <Sparkles className="w-4 h-4 mr-2" />
                     Quick Test Agent
                   </Button>
