@@ -2,7 +2,7 @@
 
 import { demoAgents } from '@/lib/demo-data'
 const agents = demoAgents
-const defaultAgentId = agents[0]?.id || 'customer-support'
+const defaultAgentId = agents[0]?.id || 'ecommerce-assistant'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
@@ -15,9 +15,7 @@ import { APIAnalyzer } from '@/lib/api-analyzer'
 import { AgentPlanner, AgentPlan } from '@/lib/agent-planner'
 
 import { 
-  Bot, 
   Send, 
-  User, 
   RotateCcw, 
   Settings,
   MessageSquare,
@@ -41,6 +39,11 @@ interface ApiCredentials {
 }
 
 export default function PlaygroundPage() {
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'
+  
+  // Debug logging
+  console.log('PlaygroundPage: agents loaded:', agents.length, 'defaultAgentId:', defaultAgentId)
+  
   // Store chat history per agent
   const [chats, setChats] = useState<{ [agentId: string]: Message[] }>({
     [defaultAgentId]: [
@@ -79,7 +82,7 @@ export default function PlaygroundPage() {
   const [feedbackRating, setFeedbackRating] = useState(5)
   const [feedbackLoading, setFeedbackLoading] = useState(false)
   const [feedbackError, setFeedbackError] = useState<string | null>(null)
-  const [feedbackList, setFeedbackList] = useState<any[]>([])
+  const [feedbackList, setFeedbackList] = useState<Array<{id: string, feedback: string, rating: number, created_at: string}>>([])
   const [feedbackListLoading, setFeedbackListLoading] = useState(false)
 
   // When agent changes, load or initialize chat for that agent
@@ -100,7 +103,7 @@ export default function PlaygroundPage() {
     } else {
       setMessages(chats[selectedAgent])
     }
-  }, [selectedAgent, chats])
+  }, [selectedAgent, chats, agents])
 
   // When messages change, update chat history for the current agent
   useEffect(() => {
@@ -183,8 +186,6 @@ export default function PlaygroundPage() {
   useEffect(() => {
     initializeDemoAgent()
   }, [initializeDemoAgent])
-
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return
@@ -307,7 +308,7 @@ export default function PlaygroundPage() {
   const handlePlayTTS = async (text: string, id: string) => {
     setTtsLoadingId(id)
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'}/tts/groq`, {
+      const res = await fetch(`${BACKEND_URL}/tts/groq`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, voice: 'alloy', model: 'tts-1' })
@@ -343,6 +344,18 @@ export default function PlaygroundPage() {
     } catch {
       toast.error('Failed to load agent for refinement')
     }
+  }
+
+  // Safety check - if no agents loaded, show error
+  if (!agents || agents.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Error Loading Playground</h1>
+          <p className="text-gray-600">No demo agents found. Please check the demo data configuration.</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -381,7 +394,7 @@ export default function PlaygroundPage() {
           <div className="lg:col-span-3">
             <div className="bg-white rounded-lg shadow p-6 flex flex-col h-[70vh]">
               <div className="flex-1 overflow-y-auto mb-4">
-                {messages.map((msg, idx) => (
+                {messages.map((msg) => (
                   <div key={msg.id} className={`flex mb-3 ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[70%] px-4 py-2 rounded-lg ${msg.type === 'user' ? 'bg-purple-100 text-right' : 'bg-gray-100 text-left'} relative`}>
                       {msg.type === 'agent' && (
