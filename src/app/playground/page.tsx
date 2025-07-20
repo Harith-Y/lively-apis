@@ -22,6 +22,28 @@ import { LocalTime } from '@/components/ui/LocalTime'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 
+// Add this at the top after imports
+// Fallback types for SpeechRecognition if not available
+interface SpeechRecognition extends EventTarget {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => void) | null;
+  onerror: ((this: SpeechRecognition, ev: Event) => void) | null;
+  onend: ((this: SpeechRecognition, ev: Event) => void) | null;
+  start(): void;
+  stop(): void;
+}
+interface SpeechRecognitionEvent extends Event {
+  results: {
+    [index: number]: {
+      [index: number]: {
+        transcript: string;
+      };
+    };
+  };
+}
+
 const agents = demoAgents
 const defaultAgentId = agents[0]?.id || 'ecommerce-assistant'
 
@@ -67,7 +89,7 @@ export default function PlaygroundPage() {
 
   // Voice input state
   const [isRecording, setIsRecording] = useState(false)
-  const recognitionRef = useRef<any>(null)
+  const recognitionRef = useRef<SpeechRecognition | null>(null)
 
   // TTS audio state
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -278,12 +300,14 @@ export default function PlaygroundPage() {
       toast.error('Speech recognition not supported in this browser.')
       return
     }
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    const recognition = new SpeechRecognition()
+    const SpeechRecognitionCtor =
+      (window as unknown as Record<string, unknown>)['SpeechRecognition'] ||
+      (window as unknown as Record<string, unknown>)['webkitSpeechRecognition'];
+    const recognition = new (SpeechRecognitionCtor as { new (): SpeechRecognition })();
     recognition.lang = 'en-US'
     recognition.interimResults = false
     recognition.maxAlternatives = 1
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
       const transcript = event.results[0][0].transcript
       setInputMessage(transcript)
       setIsRecording(false)
@@ -370,7 +394,7 @@ export default function PlaygroundPage() {
             <select
               className="border border-gray-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
               value={provider}
-              onChange={(e) => setProvider(e.target.value as 'openai' | 'claude' | 'openrouter')}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setProvider(e.target.value as 'openai' | 'claude' | 'openrouter')}
               style={{ minWidth: 120 }}
             >
               <option value="openai">OpenAI</option>
@@ -419,8 +443,8 @@ export default function PlaygroundPage() {
                   className="flex-1"
                   placeholder={isRecording ? 'Listening...' : 'Type your message...'}
                   value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && !isRecording && handleSendMessage()}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInputMessage(e.target.value)}
+                  onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && !isRecording && handleSendMessage()}
                   disabled={isLoading || isRecording}
                 />
                 <Button
@@ -503,7 +527,7 @@ export default function PlaygroundPage() {
                       type="password"
                       placeholder="Enter API key for testing"
                       value={apiCredentials.apiKey}
-                      onChange={(e) => setApiCredentials({ ...apiCredentials, apiKey: e.target.value })}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setApiCredentials({ ...apiCredentials, apiKey: e.target.value })}
                     />
                   </div>
                   <div className="text-xs text-gray-500">
@@ -625,7 +649,7 @@ export default function PlaygroundPage() {
                 max={1}
                 step={0.01}
                 value={temperature}
-                onChange={(e) => setTemperature(Number(e.target.value))}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTemperature(Number(e.target.value))}
                 className="w-full"
               />
               <div className="text-xs text-gray-500 mt-1">Controls randomness. Lower = more deterministic, higher = more creative. Current: {temperature}</div>
@@ -637,7 +661,7 @@ export default function PlaygroundPage() {
                 min={100}
                 max={4000}
                 value={maxTokens}
-                onChange={(e) => setMaxTokens(Number(e.target.value))}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMaxTokens(Number(e.target.value))}
                 className="w-full border border-gray-300 rounded-md p-2"
               />
               <div className="text-xs text-gray-500 mt-1">Limits the length of the AI response. Current: {maxTokens}</div>
@@ -662,7 +686,7 @@ export default function PlaygroundPage() {
                 className="w-full border border-gray-300 rounded p-2"
                 rows={3}
                 value={feedbackText}
-                onChange={(e) => setFeedbackText(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFeedbackText(e.target.value)}
                 disabled={feedbackLoading}
               />
             </div>
@@ -671,7 +695,7 @@ export default function PlaygroundPage() {
               <select
                 className="w-full border border-gray-300 rounded p-2"
                 value={feedbackRating}
-                onChange={(e) => setFeedbackRating(Number(e.target.value))}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFeedbackRating(Number(e.target.value))}
                 disabled={feedbackLoading}
               >
                 {[5,4,3,2,1].map(r => <option key={r} value={r}>{r} Star{r > 1 ? 's' : ''}</option>)}
