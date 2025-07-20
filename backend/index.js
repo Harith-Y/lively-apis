@@ -131,6 +131,10 @@ app.post('/api/plan-agent', async (req, res) => {
     // Choose provider
     const useGroq = provider === 'groq' || (!provider && process.env.GROQ_API_KEY);
     const useOpenRouter = provider === 'openrouter' || (!useGroq && process.env.OPENROUTER_API_KEY);
+    console.log('Calling LLM with provider:', useGroq ? 'groq' : useOpenRouter ? 'openrouter' : 'none');
+    console.log('GROQ_API_KEY set:', !!process.env.GROQ_API_KEY);
+    console.log('OPENROUTER_API_KEY set:', !!process.env.OPENROUTER_API_KEY);
+    console.log('Model:', useGroq ? 'meta-llama/llama-4-scout-17b-16e-instruct' : 'meta-llama/llama-3.2-3b-instruct:free');
     let llmRes;
     const systemPrompt = `You are an expert AI agent designer. Given an API spec and a user goal, generate a JSON agent plan with a workflow of steps (including endpoint, method, input/output mapping, and natural language intent). Output only valid JSON.`;
     const userPrompt = `API Spec (JSON):\n${JSON.stringify(parsedAPI, null, 2)}\n\nUser Goal: ${prompt}\n\nGenerate a JSON agent plan with a workflow of steps to accomplish the goal using the API. Output only valid JSON.`;
@@ -200,7 +204,8 @@ app.post('/api/plan-agent', async (req, res) => {
     }
     res.json(plan);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to generate agent plan', details: err.message });
+    console.error('Failed to generate agent plan:', err);
+    res.status(500).json({ error: 'Failed to generate agent plan', details: err && err.message ? err.message : String(err) });
   }
 });
 
