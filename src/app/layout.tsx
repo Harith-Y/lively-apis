@@ -30,13 +30,13 @@ export default async function RootLayout({
       <head />
       <body className={inter.className} suppressHydrationWarning={true}>
         <ToastProvider>
-          <div className="min-h-screen flex flex-col">
-            <Navbar />
-            <main className="flex-1">
-              {children}
-            </main>
-            <Footer />
-          </div>
+        <div className="min-h-screen flex flex-col">
+          <Navbar />
+          <main className="flex-1">
+            {children}
+          </main>
+          <Footer />
+        </div>
         </ToastProvider>
       </body>
     </html>
