@@ -1,13 +1,14 @@
 'use client'
 
 import { demoAgents } from '@/lib/demo-data'
-const agents = demoAgents
-const defaultAgentId = agents[0]?.id || 'ecommerce-assistant'
-
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { APIAnalyzer } from '@/lib/api-analyzer'
 import { AgentPlanner, AgentPlan } from '@/lib/agent-planner'
-
 import { 
   Send, 
   RotateCcw, 
@@ -17,23 +18,18 @@ import {
   Clock,
   Sparkles
 } from 'lucide-react'
-import { LocalTime } from '@/components/ui/LocalTime';
+import { LocalTime } from '@/components/ui/LocalTime'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
+
+const agents = demoAgents
+const defaultAgentId = agents[0]?.id || 'ecommerce-assistant'
 
 interface Message {
   id: string
   type: 'user' | 'agent'
   content: string
   timestamp: Date
-}
-
-interface Feedback {
-  id: string
-  agent_id: string
-  feedback: string
-  rating: number
-  created_at: string | Date
 }
 
 interface ApiCredentials {
@@ -43,7 +39,6 @@ interface ApiCredentials {
 export default function PlaygroundPage() {
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'
   
-  // Debug logging
   console.log('PlaygroundPage: agents loaded:', agents.length, 'defaultAgentId:', defaultAgentId)
   
   // Store chat history per agent
@@ -57,21 +52,26 @@ export default function PlaygroundPage() {
       }
     ]
   })
-  const [selectedAgent] = useState(defaultAgentId)
+  const [selectedAgent, setSelectedAgent] = useState(defaultAgentId)
   const [messages, setMessages] = useState<Message[]>(chats[defaultAgentId])
   const [inputMessage, setInputMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [agentPlan, setAgentPlan] = useState<AgentPlan | null>(null)
-  const [apiCredentials] = useState<ApiCredentials>({ apiKey: '' })
+  const [apiCredentials, setApiCredentials] = useState<ApiCredentials>({ apiKey: '' })
 
   // Playground settings state
-  const [temperature] = useState<number>(0.7)
-  const [maxTokens] = useState<number>(1000)
-  const [provider] = useState<'openai' | 'claude' | 'openrouter'>('openrouter')
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [temperature, setTemperature] = useState<number>(0.7)
+  const [maxTokens, setMaxTokens] = useState<number>(1000)
+  const [provider, setProvider] = useState<'openai' | 'claude' | 'openrouter'>('openrouter')
 
   // Voice input state
   const [isRecording, setIsRecording] = useState(false)
-  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const recognitionRef = useRef<any>(null)
+
+  // TTS audio state
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [ttsLoadingId, setTtsLoadingId] = useState<string | null>(null)
 
   // Feedback modal state
   const [feedbackOpen, setFeedbackOpen] = useState(false)
@@ -81,8 +81,6 @@ export default function PlaygroundPage() {
   const [feedbackError, setFeedbackError] = useState<string | null>(null)
   const [feedbackList, setFeedbackList] = useState<Array<{id: string, feedback: string, rating: number, created_at: string}>>([])
   const [feedbackListLoading, setFeedbackListLoading] = useState(false)
-
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'
 
   // When agent changes, load or initialize chat for that agent
   useEffect(() => {
@@ -102,7 +100,7 @@ export default function PlaygroundPage() {
     } else {
       setMessages(chats[selectedAgent])
     }
-  }, [selectedAgent, chats, agents])
+  }, [selectedAgent, chats])
 
   // When messages change, update chat history for the current agent
   useEffect(() => {
@@ -296,6 +294,7 @@ export default function PlaygroundPage() {
     setIsRecording(true)
     recognition.start()
   }
+
   const handleStopRecording = () => {
     if (recognitionRef.current) {
       recognitionRef.current.stop()
@@ -328,6 +327,7 @@ export default function PlaygroundPage() {
   }
 
   const router = useRouter()
+  
   // Refine Agent logic
   const handleRefineAgent = async () => {
     try {
@@ -370,7 +370,7 @@ export default function PlaygroundPage() {
             <select
               className="border border-gray-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
               value={provider}
-              onChange={e => setProvider(e.target.value as 'openai' | 'claude' | 'openrouter')}
+              onChange={(e) => setProvider(e.target.value as 'openai' | 'claude' | 'openrouter')}
               style={{ minWidth: 120 }}
             >
               <option value="openai">OpenAI</option>
@@ -419,8 +419,8 @@ export default function PlaygroundPage() {
                   className="flex-1"
                   placeholder={isRecording ? 'Listening...' : 'Type your message...'}
                   value={inputMessage}
-                  onChange={e => setInputMessage(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && !isRecording && handleSendMessage()}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && !isRecording && handleSendMessage()}
                   disabled={isLoading || isRecording}
                 />
                 <Button
@@ -544,7 +544,7 @@ export default function PlaygroundPage() {
             </div>
           </div>
 
-          {/* Sidebar: only keep agent selection and test scenarios */}
+          {/* Sidebar */}
           <div className="space-y-6">
             {/* Agent Selection */}
             <Card>
@@ -609,6 +609,8 @@ export default function PlaygroundPage() {
           </div>
         </div>
       </div>
+      
+      {/* Settings Dialog */}
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
         <DialogContent>
           <DialogHeader>
@@ -623,7 +625,7 @@ export default function PlaygroundPage() {
                 max={1}
                 step={0.01}
                 value={temperature}
-                onChange={e => setTemperature(Number(e.target.value))}
+                onChange={(e) => setTemperature(Number(e.target.value))}
                 className="w-full"
               />
               <div className="text-xs text-gray-500 mt-1">Controls randomness. Lower = more deterministic, higher = more creative. Current: {temperature}</div>
@@ -635,7 +637,7 @@ export default function PlaygroundPage() {
                 min={100}
                 max={4000}
                 value={maxTokens}
-                onChange={e => setMaxTokens(Number(e.target.value))}
+                onChange={(e) => setMaxTokens(Number(e.target.value))}
                 className="w-full border border-gray-300 rounded-md p-2"
               />
               <div className="text-xs text-gray-500 mt-1">Limits the length of the AI response. Current: {maxTokens}</div>
@@ -646,6 +648,8 @@ export default function PlaygroundPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Feedback Dialog */}
       <Dialog open={feedbackOpen} onOpenChange={setFeedbackOpen}>
         <DialogContent>
           <DialogHeader>
@@ -658,7 +662,7 @@ export default function PlaygroundPage() {
                 className="w-full border border-gray-300 rounded p-2"
                 rows={3}
                 value={feedbackText}
-                onChange={e => setFeedbackText(e.target.value)}
+                onChange={(e) => setFeedbackText(e.target.value)}
                 disabled={feedbackLoading}
               />
             </div>
@@ -667,7 +671,7 @@ export default function PlaygroundPage() {
               <select
                 className="w-full border border-gray-300 rounded p-2"
                 value={feedbackRating}
-                onChange={e => setFeedbackRating(Number(e.target.value))}
+                onChange={(e) => setFeedbackRating(Number(e.target.value))}
                 disabled={feedbackLoading}
               >
                 {[5,4,3,2,1].map(r => <option key={r} value={r}>{r} Star{r > 1 ? 's' : ''}</option>)}
