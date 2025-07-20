@@ -233,14 +233,35 @@ export function WorkflowBuilder({ workflow, onWorkflowChange, onTest }: Workflow
                           <strong>API:</strong> {step.endpoint.method} {step.endpoint.path}
                         </div>
                       )}
+
+                      {/* Render AI/LLM fields if present */}
+                      {(step.endpoint || step.method || step.input || step.output || step.intent) && (
+                        <div className="mt-3 p-2 bg-white/50 rounded text-xs space-y-1">
+                          {step.endpoint && (
+                            <div><strong>Endpoint:</strong> {typeof step.endpoint === 'string' ? step.endpoint : step.endpoint.path || step.endpoint.url || JSON.stringify(step.endpoint)}</div>
+                          )}
+                          {step.method && (
+                            <div><strong>Method:</strong> {step.method}</div>
+                          )}
+                          {step.input && (
+                            <div><strong>Input:</strong> <pre className="inline whitespace-pre-wrap">{JSON.stringify(step.input, null, 2)}</pre></div>
+                          )}
+                          {step.output && (
+                            <div><strong>Output:</strong> <pre className="inline whitespace-pre-wrap">{JSON.stringify(step.output, null, 2)}</pre></div>
+                          )}
+                          {step.intent && (
+                            <div><strong>Intent:</strong> {step.intent}</div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Arrow to next step */}
+                      {step.nextSteps && step.nextSteps.length > 0 && index < currentWorkflow.steps.length - 1 && (
+                        <div className="flex justify-center py-2">
+                          <ArrowRight className="w-4 h-4 text-gray-400" />
+                        </div>
+                      )}
                     </div>
-                    
-                    {/* Arrow to next step */}
-                    {step.nextSteps && step.nextSteps.length > 0 && index < currentWorkflow.steps.length - 1 && (
-                      <div className="flex justify-center py-2">
-                        <ArrowRight className="w-4 h-4 text-gray-400" />
-                      </div>
-                    )}
                   </div>
                 )
               })}
