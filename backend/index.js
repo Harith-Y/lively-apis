@@ -3,7 +3,7 @@ const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config({ path: require('path').resolve(__dirname, '.env') });
 const { AIIntegration } = require('./ai-integration');
-const fetch = require('node-fetch');
+const axios = require('axios'); // Use axios instead of node-fetch
 
 const app = express();
 
@@ -131,63 +131,57 @@ app.post('/api/plan-agent', async (req, res) => {
     // Choose provider
     const useGroq = provider === 'groq' || (!provider && process.env.GROQ_API_KEY);
     const useOpenRouter = provider === 'openrouter' || (!useGroq && process.env.OPENROUTER_API_KEY);
+    
     console.log('Calling LLM with provider:', useGroq ? 'groq' : useOpenRouter ? 'openrouter' : 'none');
     console.log('GROQ_API_KEY set:', !!process.env.GROQ_API_KEY);
     console.log('OPENROUTER_API_KEY set:', !!process.env.OPENROUTER_API_KEY);
     console.log('Model:', useGroq ? 'meta-llama/llama-4-scout-17b-16e-instruct' : 'meta-llama/llama-3.2-3b-instruct:free');
+    
     let llmRes;
     const systemPrompt = `You are an expert AI agent designer. Given an API spec and a user goal, generate a JSON agent plan with a workflow of steps (including endpoint, method, input/output mapping, and natural language intent). Output only valid JSON.`;
     const userPrompt = `API Spec (JSON):\n${JSON.stringify(parsedAPI, null, 2)}\n\nUser Goal: ${prompt}\n\nGenerate a JSON agent plan with a workflow of steps to accomplish the goal using the API. Output only valid JSON.`;
+    
     if (useGroq) {
-      llmRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
+      llmRes = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
+        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.2,
+        max_tokens: 2048
+      }, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt }
-          ],
-          temperature: 0.2,
-          max_tokens: 2048
-        })
+        }
       });
     } else if (useOpenRouter) {
-      llmRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
+      llmRes = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
+        model: 'meta-llama/llama-3.2-3b-instruct:free',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.2,
+        max_tokens: 2048
+      }, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: 'meta-llama/llama-3.2-3b-instruct:free',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt }
-          ],
-          temperature: 0.2,
-          max_tokens: 2048
-        })
+        }
       });
     } else {
       return res.status(500).json({ error: 'No LLM provider/API key configured' });
     }
-    const llmText = await llmRes.text();
-    if (!llmRes.ok) {
-      console.error('LLM API error:', llmText);
-      return res.status(500).json({ error: 'LLM API error', raw: llmText });
+
+    if (!llmRes.data) {
+      console.error('LLM API error: No data returned');
+      return res.status(500).json({ error: 'LLM API error: No data returned' });
     }
-    let llmData;
-    try {
-      llmData = JSON.parse(llmText);
-    } catch (e) {
-      console.error('LLM did not return JSON:', llmText);
-      return res.status(500).json({ error: 'LLM did not return JSON', raw: llmText });
-    }
-    let planText = llmData.choices?.[0]?.message?.content || llmData.choices?.[0]?.text || '';
+
+    let planText = llmRes.data.choices?.[0]?.message?.content || llmRes.data.choices?.[0]?.text || '';
+    
     // Try to parse JSON from the LLM output
     let plan;
     try {
@@ -196,16 +190,25 @@ app.post('/api/plan-agent', async (req, res) => {
       // Try to extract JSON substring
       const match = planText.match(/\{[\s\S]*\}/);
       if (match) {
-        try { plan = JSON.parse(match[0]); } catch { plan = null; }
+        try { 
+          plan = JSON.parse(match[0]); 
+        } catch { 
+          plan = null; 
+        }
       }
     }
+    
     if (!plan) {
       return res.status(500).json({ error: 'LLM did not return valid JSON', raw: planText });
     }
+    
     res.json(plan);
   } catch (err) {
     console.error('Failed to generate agent plan:', err);
-    res.status(500).json({ error: 'Failed to generate agent plan', details: err && err.message ? err.message : String(err) });
+    res.status(500).json({ 
+      error: 'Failed to generate agent plan', 
+      details: err && err.message ? err.message : String(err) 
+    });
   }
 });
 
@@ -219,66 +222,62 @@ app.post('/generate-code', async (req, res) => {
     // Choose provider
     const useGroq = provider === 'groq' || (!provider && process.env.GROQ_API_KEY);
     const useOpenRouter = provider === 'openrouter' || (!useGroq && process.env.OPENROUTER_API_KEY);
+    
     let llmRes;
     const systemPrompt = `You are an expert Node.js/Express developer. Given an agent plan (JSON) and API endpoint, generate a production-ready Node.js Express route handler that implements the agent workflow. Use axios for HTTP calls. Output only code, no explanation.`;
     const userPrompt = `Agent Name: ${agentName || 'Untitled Agent'}\nAPI Endpoint: ${apiEndpoint}\n\nAgent Plan (JSON):\n${JSON.stringify(agentPlan, null, 2)}\n\nGenerate a Node.js Express route handler that implements the agent workflow. Use axios for HTTP calls. Output only code.`;
+    
     if (useGroq) {
-      llmRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
+      llmRes = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
+        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.2,
+        max_tokens: 2048
+      }, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt }
-          ],
-          temperature: 0.2,
-          max_tokens: 2048
-        })
+        }
       });
     } else if (useOpenRouter) {
-      llmRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
+      llmRes = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
+        model: 'meta-llama/llama-3.2-3b-instruct:free',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.2,
+        max_tokens: 2048
+      }, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: 'meta-llama/llama-3.2-3b-instruct:free',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt }
-          ],
-          temperature: 0.2,
-          max_tokens: 2048
-        })
+        }
       });
     } else {
       return res.status(500).json({ error: 'No LLM provider/API key configured' });
     }
-    const llmText2 = await llmRes.text();
-    if (!llmRes.ok) {
-      console.error('LLM API error:', llmText2);
-      return res.status(500).json({ error: 'LLM API error', raw: llmText2 });
+
+    if (!llmRes.data) {
+      console.error('LLM API error: No data returned');
+      return res.status(500).json({ error: 'LLM API error: No data returned' });
     }
-    let llmData2;
-    try {
-      llmData2 = JSON.parse(llmText2);
-    } catch (e) {
-      console.error('LLM did not return JSON:', llmText2);
-      return res.status(500).json({ error: 'LLM did not return JSON', raw: llmText2 });
-    }
-    let code = llmData2.choices?.[0]?.message?.content || llmData2.choices?.[0]?.text || '';
+
+    let code = llmRes.data.choices?.[0]?.message?.content || llmRes.data.choices?.[0]?.text || '';
+    
     // Remove code block markers if present
     code = code.replace(/^```[a-z]*\n?/i, '').replace(/```$/, '').trim();
+    
     if (!code) {
-      return res.status(500).json({ error: 'LLM did not return code', raw: llmData2 });
+      return res.status(500).json({ error: 'LLM did not return code', raw: llmRes.data });
     }
+    
     res.json({ code });
   } catch (err) {
+    console.error('Generate code error:', err);
     res.status(500).json({ error: 'Failed to generate code', details: err.message });
   }
 });
@@ -616,26 +615,26 @@ app.post('/deploy/vercel', async (req, res) => {
     }
   ];
   try {
-    const response = await fetch('https://api.vercel.com/v13/deployments', {
-      method: 'POST',
+    const response = await axios.post('https://api.vercel.com/v13/deployments', {
+      name: projectName,
+      files,
+      projectSettings: { framework: null },
+      builds: [{ src: 'api/agent.js', use: '@vercel/node' }]
+    }, {
       headers: {
         Authorization: `Bearer ${vercelToken}`,
         'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        name: projectName,
-        files,
-        projectSettings: { framework: null },
-        builds: [{ src: 'api/agent.js', use: '@vercel/node' }]
-      })
+      }
     });
-    const data = await response.json();
+
+    const data = response.data;
     if (data.url) {
       res.json({ url: `https://${data.url}` });
     } else {
       res.status(500).json({ error: data.error?.message || 'Vercel deployment failed', details: data });
     }
   } catch (err) {
+    console.error('Vercel deployment error:', err);
     res.status(500).json({ error: 'Vercel deployment error', details: err.message });
   }
 });
@@ -647,21 +646,25 @@ app.post('/tts/groq', async (req, res) => {
   if (!groqApiKey) return res.status(500).json({ error: 'Groq API key not set' });
   if (!text) return res.status(400).json({ error: 'Missing text' });
   try {
-    const groqRes = await fetch('https://api.groq.com/v1/tts', {
-      method: 'POST',
+    const groqRes = await axios.post('https://api.groq.com/v1/tts', {
+      text, 
+      voice, 
+      model
+    }, {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${groqApiKey}`
-      },
-      body: JSON.stringify({ text, voice, model })
+      }
     });
-    const data = await groqRes.json();
+
+    const data = groqRes.data;
     if (data && data.audio_url) {
       res.json({ audio_url: data.audio_url });
     } else {
       res.status(500).json({ error: data.error || 'Groq TTS failed', details: data });
     }
   } catch (err) {
+    console.error('Groq TTS error:', err);
     res.status(500).json({ error: 'Groq TTS error', details: err.message });
   }
 });
@@ -669,4 +672,4 @@ app.post('/tts/groq', async (req, res) => {
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Backend listening on port ${PORT}`);
-}); 
+});
