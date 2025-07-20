@@ -106,6 +106,12 @@ export default function BuilderPage() {
   const [vercelDeployUrl, setVercelDeployUrl] = useState<string | null>(null)
   const [vercelDeployError, setVercelDeployError] = useState<string | null>(null)
 
+  // Test Agent Workflow modal state
+  const [testModalOpen, setTestModalOpen] = useState(false);
+  const [testInput, setTestInput] = useState("Hello, can you help me?");
+  const [testResult, setTestResult] = useState<string | null>(null);
+  const [testLoading, setTestLoading] = useState(false);
+
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -339,17 +345,35 @@ export default function BuilderPage() {
     }
   };
 
-  const handleTestAgent = async () => {
-    if (!agentPlan) return
-    
+  const handleTestAgent = async (workflowOverride?: any) => {
+    const planToTest = workflowOverride
+      ? { ...agentPlan, workflow: workflowOverride }
+      : agentPlan;
+    if (!planToTest) return;
+    setTestLoading(true);
+    setTestResult(null);
+    setTestModalOpen(true);
     try {
-      const execution = await aiIntegration.testAgent(agentPlan, "Hello, can you help me?")
-      // console.log('Test execution:', execution)
-      // You could show this in a modal or redirect to playground
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'}/playground/agent-response`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentId: agentName || 'test-agent',
+          agentPlan: planToTest,
+          message: testInput,
+          temperature: 0.7,
+          maxTokens: 1000,
+          provider: 'openrouter'
+        })
+      });
+      const data = await res.json();
+      setTestResult(data.agentResponse || "No response.");
     } catch (error) {
-      // console.error('Failed to test agent:', error)
+      setTestResult("Error: " + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      setTestLoading(false);
     }
-  }
+  };
 
   const handleDeployAgent = async () => {
     if (!agentPlan || !parsedAPI) return;
@@ -744,7 +768,7 @@ export default function BuilderPage() {
                         onWorkflowChange={(workflow) => {
                           setAgentPlan({ ...agentPlan, workflow })
                         }}
-                        onTest={handleTestAgent}
+                        onTest={(workflow) => handleTestAgent(workflow)}
                       />
                     </CardContent>
                   </Card>
@@ -1282,6 +1306,32 @@ export default function BuilderPage() {
               Import Selected
             </Button>
             <Button onClick={() => setComposeModalOpen(false)} className="w-full mt-2">Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={testModalOpen} onOpenChange={setTestModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Test Agent Workflow</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              value={testInput}
+              onChange={e => setTestInput(e.target.value)}
+              placeholder="Type a test message..."
+            />
+            <Button onClick={() => handleTestAgent()} disabled={testLoading}>
+              {testLoading ? "Testing..." : "Send"}
+            </Button>
+            {testResult && (
+              <div className="p-3 bg-gray-100 rounded text-sm">
+                <b>Agent Response:</b>
+                <div>{testResult}</div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setTestModalOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

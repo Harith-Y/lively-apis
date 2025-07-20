@@ -112,12 +112,35 @@ app.post('/playground/agent-response', async (req, res) => {
     return res.status(400).json({ agentResponse: 'Missing required fields.' });
   }
   try {
-    const ai = new AIIntegration(provider || 'openrouter', apiKey, temperature, maxTokens);
-    const agentResponse = await ai.executeAgent(agentPlan, message, agentPlan.api, agentPlan.apiCredentials);
-    return res.json({ agentResponse: agentResponse.agentResponse });
+    console.log('Testing agent with plan:', JSON.stringify(agentPlan, null, 2));
+    console.log('Test message:', message);
+    // Compose prompt for OpenRouter
+    const systemPrompt = "You are an AI agent. Given the following workflow plan, execute the steps as best as possible and respond to the user's message.";
+    const userPrompt = `Agent Plan (JSON):\n${JSON.stringify(agentPlan, null, 2)}\n\nUser Message: ${message}\n\nRespond as the agent would.`;
+    const llmRes = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
+      model: 'meta-llama/llama-3.2-11b-vision-instruct:free',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      temperature: temperature || 0.2,
+      max_tokens: maxTokens || 512
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`
+      }
+    });
+    if (!llmRes.data) {
+      console.error('OpenRouter API error: No data returned');
+      return res.status(500).json({ agentResponse: 'OpenRouter API error: No data returned' });
+    }
+    let agentResponse = llmRes.data.choices?.[0]?.message?.content || llmRes.data.choices?.[0]?.text || '';
+    agentResponse = agentResponse.replace(/^```[a-z]*\n?/i, '').replace(/```$/, '').trim();
+    res.json({ agentResponse });
   } catch (error) {
-    console.error('AI agent error:', error);
-    return res.status(500).json({ agentResponse: 'Error generating AI response.' });
+    console.error('OpenRouter API error:', error?.response?.data || error);
+    return res.status(500).json({ agentResponse: 'OpenRouter API error: ' + (error?.response?.data?.error || error?.message || String(error)) });
   }
 });
 
