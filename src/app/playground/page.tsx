@@ -5,12 +5,6 @@ const agents = demoAgents
 const defaultAgentId = agents[0]?.id || 'ecommerce-assistant'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-
 import { APIAnalyzer } from '@/lib/api-analyzer'
 import { AgentPlanner, AgentPlan } from '@/lib/agent-planner'
 
@@ -34,6 +28,14 @@ interface Message {
   timestamp: Date
 }
 
+interface Feedback {
+  id: string
+  agent_id: string
+  feedback: string
+  rating: number
+  created_at: string | Date
+}
+
 interface ApiCredentials {
   apiKey: string
 }
@@ -55,35 +57,32 @@ export default function PlaygroundPage() {
       }
     ]
   })
-  const [selectedAgent, setSelectedAgent] = useState(defaultAgentId)
+  const [selectedAgent] = useState(defaultAgentId)
   const [messages, setMessages] = useState<Message[]>(chats[defaultAgentId])
   const [inputMessage, setInputMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [agentPlan, setAgentPlan] = useState<AgentPlan | null>(null)
-  const [apiCredentials, setApiCredentials] = useState<ApiCredentials>({ apiKey: '' })
+  const [apiCredentials] = useState<ApiCredentials>({ apiKey: '' })
 
   // Playground settings state
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [temperature, setTemperature] = useState(0.7)
-  const [maxTokens, setMaxTokens] = useState(1000)
-  const [provider, setProvider] = useState<'openai' | 'claude' | 'openrouter'>('openrouter')
+  const [temperature] = useState<number>(0.7)
+  const [maxTokens] = useState<number>(1000)
+  const [provider] = useState<'openai' | 'claude' | 'openrouter'>('openrouter')
 
   // Voice input state
   const [isRecording, setIsRecording] = useState(false)
-  const recognitionRef = useRef<any>(null)
-
-  // TTS audio state
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-  const [ttsLoadingId, setTtsLoadingId] = useState<string | null>(null)
+  const recognitionRef = useRef<SpeechRecognition | null>(null)
 
   // Feedback modal state
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [feedbackText, setFeedbackText] = useState('')
-  const [feedbackRating, setFeedbackRating] = useState(5)
+  const [feedbackRating, setFeedbackRating] = useState<number>(5)
   const [feedbackLoading, setFeedbackLoading] = useState(false)
   const [feedbackError, setFeedbackError] = useState<string | null>(null)
   const [feedbackList, setFeedbackList] = useState<Array<{id: string, feedback: string, rating: number, created_at: string}>>([])
   const [feedbackListLoading, setFeedbackListLoading] = useState(false)
+
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'
 
   // When agent changes, load or initialize chat for that agent
   useEffect(() => {
@@ -119,7 +118,7 @@ export default function PlaygroundPage() {
       .then(data => setFeedbackList(Array.isArray(data) ? data : []))
       .catch(() => setFeedbackList([]))
       .finally(() => setFeedbackListLoading(false))
-  }, [feedbackOpen, selectedAgent])
+  }, [feedbackOpen, selectedAgent, BACKEND_URL])
 
   // Submit feedback
   const handleSubmitFeedback = async () => {

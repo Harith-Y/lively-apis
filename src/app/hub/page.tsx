@@ -7,15 +7,28 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '@/components/ui/input'
 import { useRouter } from 'next/navigation'
 
+interface Template {
+  id: string
+  name: string
+  description?: string
+  created_at?: string
+  configuration?: {
+    workflow?: {
+      steps?: Array<{ name?: string; type?: string; [key: string]: unknown }>
+    }
+  }
+  [key: string]: unknown
+}
+
 export default function AgentHubPage() {
-  const [templates, setTemplates] = useState<any[]>([])
+  const [templates, setTemplates] = useState<Template[]>([])
   const [search, setSearch] = useState('')
-  const [filtered, setFiltered] = useState<any[]>([])
-  const [preview, setPreview] = useState<any | null>(null)
+  const [filtered, setFiltered] = useState<Template[]>([])
+  const [preview, setPreview] = useState<Template | null>(null)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const [selectedIds, setSelectedIds] = useState<string[]>([])
-  const [composePreview, setComposePreview] = useState<any | null>(null)
+  const [composePreview, setComposePreview] = useState<Template | null>(null)
 
   useEffect(() => {
     setLoading(true)
@@ -34,13 +47,15 @@ export default function AgentHubPage() {
   }, [search, templates])
 
   // Import to builder
-  const handleImport = (tpl: any) => {
+  const handleImport = (tpl: Template | null) => {
+    if (!tpl) return
     localStorage.setItem('refine-agent', JSON.stringify(tpl))
     router.push('/builder?refine=1')
   }
 
   // Clone/fork (for now, just import as new)
-  const handleClone = (tpl: any) => {
+  const handleClone = (tpl: Template | null) => {
+    if (!tpl) return
     const fork = { ...tpl, id: undefined, name: tpl.name + ' (Copy)' }
     localStorage.setItem('refine-agent', JSON.stringify(fork))
     router.push('/builder?refine=1')
@@ -58,6 +73,7 @@ export default function AgentHubPage() {
       steps: selected.flatMap(t => t.configuration?.workflow?.steps || [])
     }
     setComposePreview({
+      id: 'composed-' + Date.now(),
       name: 'Composed Agent',
       description: 'Composed from: ' + selected.map(t => t.name).join(', '),
       configuration: { workflow: composedWorkflow }
@@ -131,7 +147,7 @@ export default function AgentHubPage() {
             <div className="mb-2 text-gray-700">{preview?.description}</div>
             {preview?.configuration && preview?.configuration.workflow && preview?.configuration.workflow.steps && (
               <ul className="list-disc ml-5 text-xs text-gray-700 mb-2">
-                {preview.configuration.workflow.steps.map((step: any, i: number) => (
+                {preview.configuration.workflow.steps.map((step, i: number) => (
                   <li key={i}>{step.name || step.type || `Step ${i+1}`}</li>
                 ))}
               </ul>
@@ -151,7 +167,7 @@ export default function AgentHubPage() {
             <div className="mb-2 text-gray-700">{composePreview?.description}</div>
             {composePreview?.configuration && composePreview?.configuration.workflow && composePreview?.configuration.workflow.steps && (
               <ul className="list-disc ml-5 text-xs text-gray-700 mb-2">
-                {composePreview.configuration.workflow.steps.map((step: any, i: number) => (
+                {composePreview.configuration.workflow.steps.map((step, i: number) => (
                   <li key={i}>{step.name || step.type || `Step ${i+1}`}</li>
                 ))}
               </ul>

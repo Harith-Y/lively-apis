@@ -57,25 +57,25 @@ export default function BuilderPage() {
 
   // Agent Composition modal state
   const [composeModalOpen, setComposeModalOpen] = useState(false)
-  const [templates, setTemplates] = useState<any[]>([])
+  const [templates, setTemplates] = useState<Array<{ id: string; name: string; [key: string]: unknown }>>([])
   const [templatesLoading, setTemplatesLoading] = useState(false)
   const [templatesError, setTemplatesError] = useState<string | null>(null)
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([])
 
   // Automated API Discovery state
-  const [apiSuggestions, setApiSuggestions] = useState<any[]>([])
+  const [apiSuggestions, setApiSuggestions] = useState<Array<{ id: string; name: string; [key: string]: unknown }>>([])
   const [apiSuggestLoading, setApiSuggestLoading] = useState(false)
   const [apiSuggestError, setApiSuggestError] = useState<string | null>(null)
 
   // Template Library modal state
   const [templateLibraryOpen, setTemplateLibraryOpen] = useState(false)
-  const [libraryTemplates, setLibraryTemplates] = useState<any[]>([])
+  const [libraryTemplates, setLibraryTemplates] = useState<Array<{ id: string; name: string; [key: string]: unknown }>>([])
   const [libraryLoading, setLibraryLoading] = useState(false)
   const [libraryError, setLibraryError] = useState<string | null>(null)
-  const [previewTemplate, setPreviewTemplate] = useState<any | null>(null)
+  const [previewTemplate, setPreviewTemplate] = useState<{ id: string; name: string; [key: string]: unknown } | null>(null)
 
   // MCP Server Management state
-  const [mcpServers, setMcpServers] = useState<any[]>([])
+  const [mcpServers, setMcpServers] = useState<Array<{ id: string; name: string; url: string; [key: string]: unknown }>>([])
   const [mcpLoading, setMcpLoading] = useState(false)
   const [mcpError, setMcpError] = useState<string | null>(null)
   const [newMcpName, setNewMcpName] = useState('')
@@ -89,14 +89,14 @@ export default function BuilderPage() {
   const [cloudRegion, setCloudRegion] = useState('us-east-1')
   const [cloudProvider, setCloudProvider] = useState('AWS')
 
-  // Analytics state
-  const [analytics, setAnalytics] = useState<any>(null)
+  // Agent Analytics state
+  const [analytics, setAnalytics] = useState<Array<{ id: string; name: string; [key: string]: unknown }>>([])
   const [analyticsLoading, setAnalyticsLoading] = useState(false)
   const [analyticsError, setAnalyticsError] = useState<string | null>(null)
 
   // Version History modal state
   const [versionModalOpen, setVersionModalOpen] = useState(false)
-  const [versionList, setVersionList] = useState<any[]>([])
+  const [versionList, setVersionList] = useState<Array<{ id: string; version: string; [key: string]: unknown }>>([])
   const [versionLoading, setVersionLoading] = useState(false)
   const [versionError, setVersionError] = useState<string | null>(null)
 
@@ -123,7 +123,8 @@ export default function BuilderPage() {
           setAgentPlan(agent.configuration || null)
           // If version exists, increment for redeploy
           if (agent.version) {
-            setAgentPlan((plan: any) => plan ? { ...plan, version: agent.version + 1 } : { version: agent.version + 1 })
+            // TODO: Replace 'unknown' with a specific type
+            setAgentPlan((plan) => plan ? { ...plan, version: agent.version + 1 } : plan)
           }
         } catch {}
         localStorage.removeItem('refine-agent')
@@ -197,7 +198,7 @@ export default function BuilderPage() {
     if (enterpriseModalOpen) {
       setAnalyticsLoading(true)
       setAnalyticsError(null)
-      setAnalytics(null)
+      setAnalytics([])
       const token = typeof window !== 'undefined' ? localStorage.getItem('sb-access-token') : null
       fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'}/api/analytics`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
@@ -220,7 +221,7 @@ export default function BuilderPage() {
     setVersionList([])
     // Find current agent id from agentPlan or parsedAPI if available
     // Fallback: skip if not available
-    const agentId = (agentPlan as any)?.id || (parsedAPI as any)?.id || null
+    const agentId = (agentPlan && typeof agentPlan === 'object' && 'id' in agentPlan ? agentPlan.id : null) || (parsedAPI && typeof parsedAPI === 'object' && 'id' in parsedAPI ? parsedAPI.id : null) || null
     if (!agentId) {
       setVersionError('No agent selected')
       setVersionLoading(false)
@@ -234,12 +235,12 @@ export default function BuilderPage() {
   }, [versionModalOpen, agentName, agentPlan, parsedAPI])
 
   // Load a previous version into the builder
-  const handleLoadVersion = (version: any) => {
-    setAgentName(version.name || '')
-    setAgentDescription(version.description || '')
-    setApiEndpoint(version.api_endpoint || '')
-    setParsedAPI(version.configuration?.parsedAPI || null)
-    setAgentPlan(version.configuration || null)
+  const handleLoadVersion = async (version: { id: string; version: string; [key: string]: unknown }) => {
+    setAgentName(typeof version.name === 'string' ? version.name : '')
+    setAgentDescription(typeof version.description === 'string' ? version.description : '')
+    setApiEndpoint(typeof version.api_endpoint === 'string' ? version.api_endpoint : '')
+    setParsedAPI(version.configuration && typeof version.configuration === 'object' && 'parsedAPI' in version.configuration ? version.configuration.parsedAPI as ParsedAPI : null)
+    setAgentPlan(version.configuration && typeof version.configuration === 'object' ? version.configuration as AgentPlan : null)
     setVersionModalOpen(false)
   }
 
@@ -401,8 +402,8 @@ export default function BuilderPage() {
       const deployData = await deployRes.json()
       if (deployData.url) setVercelDeployUrl(deployData.url)
       else throw new Error(deployData.error || 'Vercel deployment failed')
-    } catch (err: any) {
-      setVercelDeployError(err.message || 'Deployment failed')
+    } catch (err: unknown) {
+      setVercelDeployError(err instanceof Error ? err.message : 'Deployment failed')
     } finally {
       setVercelDeploying(false)
     }
@@ -601,12 +602,12 @@ export default function BuilderPage() {
                             className="p-2 border rounded cursor-pointer hover:bg-blue-50"
                             onClick={() => {
                               setSelectedAPI(api.id)
-                              setApiEndpoint(api.url)
+                              setApiEndpoint(typeof api.url === 'string' ? api.url : '')
                             }}
                           >
-                            <div className="font-medium">{api.name}</div>
-                            <div className="text-xs text-gray-500">{api.description}</div>
-                            <div className="text-xs text-blue-700">{api.url}</div>
+                            <div className="font-medium">{typeof api.name === 'string' ? api.name : 'Unknown API'}</div>
+                            <div className="text-xs text-gray-500">{typeof api.description === 'string' ? api.description : 'No description'}</div>
+                            <div className="text-xs text-blue-700">{typeof api.url === 'string' ? api.url : 'No URL'}</div>
                           </div>
                         ))}
                       </div>
@@ -830,7 +831,7 @@ export default function BuilderPage() {
                         ) : mcpServers.length === 0 ? (
                           <div className="text-xs text-gray-500">No MCP servers found.</div>
                         ) : (
-                          mcpServers.map((server: any) => (
+                          mcpServers.map((server: { id: string; name: string; url: string }) => (
                             <label key={server.id} className="flex items-center space-x-2">
                               <input
                                 type="radio"
@@ -1207,8 +1208,8 @@ export default function BuilderPage() {
                           )
                         }}
                       />
-                      <span className="font-medium">{tpl.name || tpl.title || `Template ${tpl.id}`}</span>
-                      <span className="text-xs text-gray-500">{tpl.description}</span>
+                      <span className="font-medium">{typeof tpl.name === 'string' ? tpl.name : (typeof tpl.title === 'string' ? tpl.title : `Template ${tpl.id}`)}</span>
+                      <span className="text-xs text-gray-500">{typeof tpl.description === 'string' ? tpl.description : 'No description'}</span>
                     </label>
                   ))}
                 </div>
@@ -1219,15 +1220,15 @@ export default function BuilderPage() {
                       const tpl = templates.find(t => t.id === id)
                       return tpl ? (
                         <div key={id} className="mb-2">
-                          <div className="font-medium">{tpl.name || tpl.title}</div>
-                          <div className="text-xs text-gray-600">{tpl.description}</div>
-                          {tpl.configuration && tpl.configuration.workflow && tpl.configuration.workflow.steps && (
+                          <div className="font-medium">{typeof tpl.name === 'string' ? tpl.name : (typeof tpl.title === 'string' ? tpl.title : 'Untitled Template')}</div>
+                          <div className="text-xs text-gray-600">{typeof tpl.description === 'string' ? tpl.description : 'No description'}</div>
+                          {tpl.configuration && typeof tpl.configuration === 'object' && 'workflow' in tpl.configuration && tpl.configuration.workflow && typeof tpl.configuration.workflow === 'object' && 'steps' in tpl.configuration.workflow && Array.isArray(tpl.configuration.workflow.steps) ? (
                             <ul className="list-disc ml-5 text-xs text-gray-700">
-                              {tpl.configuration.workflow.steps.map((step: any, i: number) => (
+                              {tpl.configuration.workflow.steps.map((step: { name?: string; type?: string }, i: number) => (
                                 <li key={i}>{step.name || step.type || `Step ${i+1}`}</li>
                               ))}
                             </ul>
-                          )}
+                          ) : null}
                         </div>
                       ) : null
                     })}
@@ -1242,9 +1243,9 @@ export default function BuilderPage() {
                 // For now, just import the first selected template
                 const tpl = templates.find(t => t.id === selectedTemplateIds[0])
                 if (tpl && tpl.configuration) {
-                  setAgentPlan(tpl.configuration)
-                  setAgentName(tpl.name || tpl.title || '')
-                  setAgentDescription(tpl.description || '')
+                  setAgentPlan(tpl.configuration && typeof tpl.configuration === 'object' ? tpl.configuration as AgentPlan : null)
+                  setAgentName(typeof tpl.name === 'string' ? tpl.name : (typeof tpl.title === 'string' ? tpl.title : ''))
+                  setAgentDescription(typeof tpl.description === 'string' ? tpl.description : '')
                 }
                 setComposeModalOpen(false)
                 setSelectedTemplateIds([])
