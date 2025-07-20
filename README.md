@@ -104,6 +104,11 @@ SUPABASE_URL=your_supabase_project_url
 SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 PORT=10000
+NODE_ENV=production
+FRONTEND_URL=https://localhost:3000
+PASSWORD_RESET_REDIRECT_URL=https://localhost:3000/auth/reset-password
+GROQ_API_KEY=your_groq_api_key
+VERCEL_TOKEN=your_vercel_token
 ```
 
 ### 5. Start Development Servers
@@ -214,6 +219,11 @@ npm run lint             # Run ESLint
    - `SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
    - `PORT`
+   - `NODE_ENV`
+   - `FRONTEND_URL`
+   - `PASSWORD_RESET_REDIRECT_URL`
+   - `GROQ_API_KEY`
+   - `VERCEL_TOKEN`
 4. Set build command: `npm install`
 5. Set start command: `npm start`
 
