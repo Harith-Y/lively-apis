@@ -25,6 +25,7 @@ import {
   CheckCircle
 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import toast from "react-hot-toast"; // Ensure this is at the top if not already
 
 export default function BuilderPage() {
   const [agentName, setAgentName] = useState('')
@@ -299,19 +300,40 @@ export default function BuilderPage() {
   }
 
   const handleGenerateAgent = async () => {
-    if (!parsedAPI || !naturalLanguagePrompt) return
-    
-    setIsGenerating(true)
-    try {
-      const planner = new AgentPlanner(parsedAPI)
-      const plan = await planner.planAgent(naturalLanguagePrompt)
-      setAgentPlan(plan)
-    } catch (error) {
-      // console.error('Failed to generate agent:', error)
-    } finally {
-      setIsGenerating(false)
+    if (!parsedAPI || !naturalLanguagePrompt) {
+      toast.error("Please analyze an API and enter a prompt.");
+      return;
     }
-  }
+
+    setIsGenerating(true);
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'}/api/plan-agent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parsedAPI, prompt: naturalLanguagePrompt })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to generate agent plan');
+      }
+      const plan = await res.json();
+      if (!plan || !plan.workflow || !plan.workflow.steps) {
+        toast.error("Failed to generate a valid agent workflow.");
+        setAgentPlan(null);
+      } else {
+        setAgentPlan(plan);
+        toast.success("Agent workflow generated!");
+      }
+    } catch (error) {
+      toast.error(
+        "Failed to generate agent workflow: " +
+          (error instanceof Error ? error.message : String(error))
+      );
+      setAgentPlan(null);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const handleTestAgent = async () => {
     if (!agentPlan) return

@@ -121,17 +121,139 @@ app.post('/playground/agent-response', async (req, res) => {
   }
 });
 
-// Code generation endpoint
+// === PLAN AGENT ENDPOINT ===
+app.post('/api/plan-agent', async (req, res) => {
+  const { parsedAPI, prompt, provider } = req.body;
+  if (!parsedAPI || !prompt) {
+    return res.status(400).json({ error: 'Missing parsedAPI or prompt' });
+  }
+  try {
+    // Choose provider
+    const useGroq = provider === 'groq' || (!provider && process.env.GROQ_API_KEY);
+    const useOpenRouter = provider === 'openrouter' || (!useGroq && process.env.OPENROUTER_API_KEY);
+    let llmRes;
+    const systemPrompt = `You are an expert AI agent designer. Given an API spec and a user goal, generate a JSON agent plan with a workflow of steps (including endpoint, method, input/output mapping, and natural language intent). Output only valid JSON.`;
+    const userPrompt = `API Spec (JSON):\n${JSON.stringify(parsedAPI, null, 2)}\n\nUser Goal: ${prompt}\n\nGenerate a JSON agent plan with a workflow of steps to accomplish the goal using the API. Output only valid JSON.`;
+    if (useGroq) {
+      llmRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'mixtral-8x7b-32768',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+          temperature: 0.2,
+          max_tokens: 2048
+        })
+      });
+    } else if (useOpenRouter) {
+      llmRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'meta-llama/llama-3.2-3b-instruct:free',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+          temperature: 0.2,
+          max_tokens: 2048
+        })
+      });
+    } else {
+      return res.status(500).json({ error: 'No LLM provider/API key configured' });
+    }
+    const llmData = await llmRes.json();
+    let planText = llmData.choices?.[0]?.message?.content || llmData.choices?.[0]?.text || '';
+    // Try to parse JSON from the LLM output
+    let plan;
+    try {
+      plan = JSON.parse(planText);
+    } catch (e) {
+      // Try to extract JSON substring
+      const match = planText.match(/\{[\s\S]*\}/);
+      if (match) {
+        try { plan = JSON.parse(match[0]); } catch { plan = null; }
+      }
+    }
+    if (!plan) {
+      return res.status(500).json({ error: 'LLM did not return valid JSON', raw: planText });
+    }
+    res.json(plan);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to generate agent plan', details: err.message });
+  }
+});
+
+// === GENERATE CODE ENDPOINT (REAL IMPLEMENTATION) ===
 app.post('/generate-code', async (req, res) => {
-  const { agentPlan, agentName, apiEndpoint } = req.body;
+  const { agentPlan, agentName, apiEndpoint, provider } = req.body;
   if (!agentPlan || !apiEndpoint) {
     return res.status(400).json({ error: 'Missing agentPlan or apiEndpoint' });
   }
-
-  // Simple code generation mock: Express route handler for the agent
-  const code = `// Auto-generated agent for ${agentName || 'Untitled Agent'}\nconst axios = require('axios');\n\nasync function handleAgentRequest(input) {\n  // Agent workflow steps\n  // (This is a mock. Replace with real logic based on agentPlan)\n  // Example: Call API endpoint\n  const response = await axios.get('${apiEndpoint}');\n  return response.data;\n}\n\nmodule.exports = { handleAgentRequest };\n`;
-
-  res.json({ code });
+  try {
+    // Choose provider
+    const useGroq = provider === 'groq' || (!provider && process.env.GROQ_API_KEY);
+    const useOpenRouter = provider === 'openrouter' || (!useGroq && process.env.OPENROUTER_API_KEY);
+    let llmRes;
+    const systemPrompt = `You are an expert Node.js/Express developer. Given an agent plan (JSON) and API endpoint, generate a production-ready Node.js Express route handler that implements the agent workflow. Use axios for HTTP calls. Output only code, no explanation.`;
+    const userPrompt = `Agent Name: ${agentName || 'Untitled Agent'}\nAPI Endpoint: ${apiEndpoint}\n\nAgent Plan (JSON):\n${JSON.stringify(agentPlan, null, 2)}\n\nGenerate a Node.js Express route handler that implements the agent workflow. Use axios for HTTP calls. Output only code.`;
+    if (useGroq) {
+      llmRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.GROQ_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'mixtral-8x7b-32768',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+          temperature: 0.2,
+          max_tokens: 2048
+        })
+      });
+    } else if (useOpenRouter) {
+      llmRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'meta-llama/llama-3.2-3b-instruct:free',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+          temperature: 0.2,
+          max_tokens: 2048
+        })
+      });
+    } else {
+      return res.status(500).json({ error: 'No LLM provider/API key configured' });
+    }
+    const llmData = await llmRes.json();
+    let code = llmData.choices?.[0]?.message?.content || llmData.choices?.[0]?.text || '';
+    // Remove code block markers if present
+    code = code.replace(/^```[a-z]*\n?/i, '').replace(/```$/, '').trim();
+    if (!code) {
+      return res.status(500).json({ error: 'LLM did not return code', raw: llmData });
+    }
+    res.json({ code });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to generate code', details: err.message });
+  }
 });
 
 // Automated API Discovery endpoint
