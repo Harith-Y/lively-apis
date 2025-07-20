@@ -171,13 +171,16 @@ app.post('/api/plan-agent', async (req, res) => {
     } else {
       return res.status(500).json({ error: 'No LLM provider/API key configured' });
     }
-    // Log raw response for debugging
     const llmText = await llmRes.text();
-    console.log('LLM raw response:', llmText);
+    if (!llmRes.ok) {
+      console.error('LLM API error:', llmText);
+      return res.status(500).json({ error: 'LLM API error', raw: llmText });
+    }
     let llmData;
     try {
       llmData = JSON.parse(llmText);
     } catch (e) {
+      console.error('LLM did not return JSON:', llmText);
       return res.status(500).json({ error: 'LLM did not return JSON', raw: llmText });
     }
     let planText = llmData.choices?.[0]?.message?.content || llmData.choices?.[0]?.text || '';
@@ -197,7 +200,6 @@ app.post('/api/plan-agent', async (req, res) => {
     }
     res.json(plan);
   } catch (err) {
-    console.error('Failed to generate agent plan:', err);
     res.status(500).json({ error: 'Failed to generate agent plan', details: err.message });
   }
 });
@@ -252,24 +254,26 @@ app.post('/generate-code', async (req, res) => {
     } else {
       return res.status(500).json({ error: 'No LLM provider/API key configured' });
     }
-    // Log raw response for debugging
-    const llmText = await llmRes.text();
-    console.log('LLM raw response:', llmText);
-    let llmData;
-    try {
-      llmData = JSON.parse(llmText);
-    } catch (e) {
-      return res.status(500).json({ error: 'LLM did not return JSON', raw: llmText });
+    const llmText2 = await llmRes.text();
+    if (!llmRes.ok) {
+      console.error('LLM API error:', llmText2);
+      return res.status(500).json({ error: 'LLM API error', raw: llmText2 });
     }
-    let code = llmData.choices?.[0]?.message?.content || llmData.choices?.[0]?.text || '';
+    let llmData2;
+    try {
+      llmData2 = JSON.parse(llmText2);
+    } catch (e) {
+      console.error('LLM did not return JSON:', llmText2);
+      return res.status(500).json({ error: 'LLM did not return JSON', raw: llmText2 });
+    }
+    let code = llmData2.choices?.[0]?.message?.content || llmData2.choices?.[0]?.text || '';
     // Remove code block markers if present
     code = code.replace(/^```[a-z]*\n?/i, '').replace(/```$/, '').trim();
     if (!code) {
-      return res.status(500).json({ error: 'LLM did not return code', raw: llmData });
+      return res.status(500).json({ error: 'LLM did not return code', raw: llmData2 });
     }
     res.json({ code });
   } catch (err) {
-    console.error('Failed to generate code:', err);
     res.status(500).json({ error: 'Failed to generate code', details: err.message });
   }
 });
